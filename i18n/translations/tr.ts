@@ -16,7 +16,7 @@ export default {
     url: "URL",
     audio: "Ses",
     camera: "Kamera",
-    output: "Çıktı",
+    output: "Çıktı Dili",
     tone: "Ton",
     btn_summarize: "Özetle",
     btn_summarize_translate: "Özetle ve Çevir",

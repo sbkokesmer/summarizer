@@ -16,7 +16,7 @@ export default {
     url: "URL",
     audio: "Audio",
     camera: "Camera",
-    output: "Output",
+    output: "Output Language",
     tone: "Tone",
     btn_summarize: "Summarize",
     btn_summarize_translate: "Summarize & Translate",

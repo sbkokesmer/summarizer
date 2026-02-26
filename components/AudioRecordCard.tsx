@@ -50,6 +50,11 @@ export function AudioRecordCard({
   const soundRef = useRef<Audio.Sound | null>(null);
   const recordedUriRef = useRef<string | null>(null);
 
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const webAudioRef = useRef<HTMLAudioElement | null>(null);
+  const webAudioBlobRef = useRef<Blob | null>(null);
+
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const waveAnims = useRef(Array.from({ length: 5 }, () => new Animated.Value(0.3))).current;
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -63,6 +68,13 @@ export function AudioRecordCard({
       waveRef.current?.stop();
       recordingRef.current?.stopAndUnloadAsync().catch(() => {});
       soundRef.current?.unloadAsync().catch(() => {});
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+      if (webAudioRef.current) {
+        webAudioRef.current.pause();
+        webAudioRef.current = null;
+      }
     };
   }, []);
 
@@ -98,30 +110,87 @@ export function AudioRecordCard({
     waveAnims.forEach((anim) => Animated.spring(anim, { toValue: 0.3, useNativeDriver: true }).start());
   };
 
+  const startTimer = () => {
+    setElapsed(0);
+    timerRef.current = setInterval(() => setElapsed((p) => p + 1), 1000);
+  };
+
+  const stopTimer = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+  };
+
   const handleRecord = async () => {
     if (state === 'idle') {
       if (Platform.OS === 'web') {
-        setState('recording');
-        setElapsed(0);
-        startPulse();
-        startWaves();
-        timerRef.current = setInterval(() => setElapsed((p) => p + 1), 1000);
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          audioChunksRef.current = [];
+          const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+            ? 'audio/webm;codecs=opus'
+            : MediaRecorder.isTypeSupported('audio/webm')
+            ? 'audio/webm'
+            : 'audio/ogg';
+          const mediaRecorder = new MediaRecorder(stream, { mimeType });
+          mediaRecorderRef.current = mediaRecorder;
+
+          mediaRecorder.ondataavailable = (e) => {
+            if (e.data && e.data.size > 0) {
+              audioChunksRef.current.push(e.data);
+            }
+          };
+
+          mediaRecorder.start(100);
+          setState('recording');
+          startTimer();
+          startPulse();
+          startWaves();
+        } catch {
+          return;
+        }
         return;
       }
+
       const { granted } = await Audio.requestPermissionsAsync();
       if (!granted) return;
       await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
       const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
       recordingRef.current = recording;
       setState('recording');
-      setElapsed(0);
+      startTimer();
       startPulse();
       startWaves();
-      timerRef.current = setInterval(() => setElapsed((p) => p + 1), 1000);
+
     } else if (state === 'recording') {
-      if (timerRef.current) clearInterval(timerRef.current);
+      stopTimer();
       stopPulse();
       stopWaves();
+
+      if (Platform.OS === 'web') {
+        const mr = mediaRecorderRef.current;
+        if (!mr) return;
+
+        mr.onstop = async () => {
+          const mimeType = mr.mimeType || 'audio/webm';
+          const blob = new Blob(audioChunksRef.current, { type: mimeType });
+          webAudioBlobRef.current = blob;
+
+          mr.stream.getTracks().forEach((t) => t.stop());
+
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64 = (reader.result as string).split(',')[1];
+            const ext = mimeType.includes('ogg') ? 'ogg' : 'webm';
+            const audio: SelectedAudio = { name: `recording.${ext}`, base64, mimeType };
+            setState('recorded');
+            onRecordingChange?.(true, formatTime(elapsed), audio);
+          };
+          reader.readAsDataURL(blob);
+        };
+
+        mr.stop();
+        return;
+      }
+
       if (recordingRef.current) {
         await recordingRef.current.stopAndUnloadAsync();
         const uri = recordingRef.current.getURI();
@@ -141,18 +210,34 @@ export function AudioRecordCard({
   };
 
   const handleDiscard = async () => {
-    if (timerRef.current) clearInterval(timerRef.current);
+    stopTimer();
     stopPulse();
     stopWaves();
-    if (recordingRef.current) {
-      await recordingRef.current.stopAndUnloadAsync().catch(() => {});
-      recordingRef.current = null;
+
+    if (Platform.OS === 'web') {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
+        mediaRecorderRef.current.stop();
+      }
+      mediaRecorderRef.current = null;
+      audioChunksRef.current = [];
+      webAudioBlobRef.current = null;
+      if (webAudioRef.current) {
+        webAudioRef.current.pause();
+        webAudioRef.current = null;
+      }
+    } else {
+      if (recordingRef.current) {
+        await recordingRef.current.stopAndUnloadAsync().catch(() => {});
+        recordingRef.current = null;
+      }
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync().catch(() => {});
+        soundRef.current = null;
+      }
+      recordedUriRef.current = null;
     }
-    if (soundRef.current) {
-      await soundRef.current.unloadAsync().catch(() => {});
-      soundRef.current = null;
-    }
-    recordedUriRef.current = null;
+
     setState('idle');
     setElapsed(0);
     setUploadedAudio(null);
@@ -160,10 +245,26 @@ export function AudioRecordCard({
   };
 
   const handlePlayPause = async () => {
-    if (Platform.OS === 'web' || !recordedUriRef.current) {
-      setState((prev) => (prev === 'playing' ? 'recorded' : 'playing'));
+    if (Platform.OS === 'web') {
+      if (!webAudioBlobRef.current) return;
+      if (state === 'playing') {
+        webAudioRef.current?.pause();
+        setState('recorded');
+      } else {
+        if (!webAudioRef.current) {
+          const url = URL.createObjectURL(webAudioBlobRef.current);
+          const audio = new window.Audio(url);
+          audio.onended = () => setState('recorded');
+          webAudioRef.current = audio;
+        }
+        await webAudioRef.current.play();
+        setState('playing');
+      }
       return;
     }
+
+    if (!recordedUriRef.current) return;
+
     if (state === 'playing') {
       await soundRef.current?.pauseAsync();
       setState('recorded');
@@ -211,7 +312,7 @@ export function AudioRecordCard({
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
     const sec = s % 60;
-    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '00')}`;
   };
 
   const getFileExt = (name: string) => name.split('.').pop()?.toUpperCase() || 'AUDIO';

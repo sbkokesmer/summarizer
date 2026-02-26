@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, useColorScheme } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, useColorScheme, Platform } from 'react-native';
 import { UploadCloud, FileText } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
@@ -27,6 +27,27 @@ export function FileUploadCard({ file, onFileSelected, onRemoveFile, disabled, t
 
   const handlePick = async () => {
     if (disabled) return;
+
+    if (Platform.OS === 'web') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.txt,.pdf,.doc,.docx';
+      input.onchange = async (e: Event) => {
+        const fileInput = e.target as HTMLInputElement;
+        const pickedFile = fileInput.files?.[0];
+        if (!pickedFile) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result as string;
+          const base64 = dataUrl.split(',')[1];
+          onFileSelected({ name: pickedFile.name, base64, mimeType: pickedFile.type || 'application/octet-stream' });
+        };
+        reader.readAsDataURL(pickedFile);
+      };
+      input.click();
+      return;
+    }
+
     const result = await DocumentPicker.getDocumentAsync({
       type: ['text/plain', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
       copyToCacheDirectory: true,

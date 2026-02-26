@@ -157,7 +157,7 @@ export default function SummarizeScreen() {
     }
   };
 
-  const showSuggestions = inputTypeIndex <= 2;
+  const showSuggestions = inputTypeIndex === 0;
   const gradientColors = isDark ? ['#1C1C1E', '#000000'] : ['#F2F2F7', '#FFFFFF'];
 
   return (

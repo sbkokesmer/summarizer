@@ -23,14 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { Colors } from '@/constants/Colors';
 import { FadeInView } from '@/components/FadeInView';
 
-// Mock Data for History (Not translated as requested)
-const HISTORY_DATA = [
-  { id: '1', type: 'file', title: 'Q3_Financial_Report.pdf', action: 'Summarized', date: '2 hours ago', icon: FileText, color: '#FF3B30' },
-  { id: '2', type: 'text', title: 'Meeting Notes: Q4 Roadmap', action: 'Translated (ES)', date: 'Yesterday', icon: Type, color: '#007AFF' },
-  { id: '3', type: 'url', title: 'techcrunch.com/ai-future-trends', action: 'Summarized', date: 'Oct 12', icon: LinkIcon, color: '#34C759' },
-  { id: '4', type: 'file', title: 'Product_Requirements_v2.docx', action: 'Summarized & Translated (FR)', date: 'Oct 10', icon: FileText, color: '#007AFF' },
-  { id: '5', type: 'text', title: 'Email Draft to Investors', action: 'Tone Adjusted (Professional)', date: 'Oct 08', icon: Type, color: '#007AFF' },
-];
+const HISTORY_DATA: { id: string; type: string; title: string; action: string; date: string; icon: typeof FileText; color: string }[] = [];
 
 export default function HistoryScreen() {
   const { t } = useTranslation();

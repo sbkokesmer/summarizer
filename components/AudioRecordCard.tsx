@@ -21,11 +21,6 @@ interface AudioRecordCardProps {
 type AudioMode = 'record' | 'upload';
 type RecordState = 'idle' | 'recording' | 'recorded' | 'playing';
 
-const MOCK_AUDIO_FILES = [
-  'meeting_notes_q3.mp3',
-  'interview_session.m4a',
-  'lecture_recording.wav',
-];
 
 export function AudioRecordCard({
   onRecordingChange,
@@ -148,9 +143,7 @@ export function AudioRecordCard({
   };
 
   const handleUpload = () => {
-    const randomFile = MOCK_AUDIO_FILES[Math.floor(Math.random() * MOCK_AUDIO_FILES.length)];
-    setUploadedFile(randomFile);
-    onRecordingChange?.(true, '--:--', randomFile);
+    if (disabled) return;
   };
 
   const handleRemoveUpload = () => {

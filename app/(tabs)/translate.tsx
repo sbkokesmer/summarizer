@@ -65,9 +65,8 @@ export default function TranslateScreen() {
     setInputTypeIndex(index);
   };
 
-  const handleSimulateFileSelect = () => {
+  const handleFileSelect = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setSelectedFile('Documento_Importante.docx');
   };
 
   const handleRemoveFile = () => {
@@ -190,7 +189,7 @@ export default function TranslateScreen() {
               {inputTypeIndex === 1 && (
                 <FileUploadCard
                   fileName={selectedFile}
-                  onSelectFile={handleSimulateFileSelect}
+                  onSelectFile={handleFileSelect}
                   onRemoveFile={handleRemoveFile}
                   disabled={isLoading}
                 />

@@ -21,12 +21,6 @@ interface CameraScanCardProps {
 type CameraMode = 'camera' | 'upload';
 type ScanState = 'idle' | 'scanning' | 'scanned';
 
-const MOCK_IMAGE_FILES = [
-  'document_scan_001.jpg',
-  'invoice_march.png',
-  'contract_signed.pdf',
-  'whiteboard_photo.jpeg',
-];
 
 export function CameraScanCard({
   onScanChange,
@@ -78,21 +72,6 @@ export function CameraScanCard({
     setScanState('scanning');
     startScanAnimation();
     fadeAnim.setValue(0);
-
-    setTimeout(() => {
-      stopScanAnimation();
-      const mockText =
-        'Quarterly Report — Q3 2024\n\nRevenue increased by 24% compared to the previous quarter. Key drivers include new product launches and expanded distribution channels across APAC markets.';
-      setPreviewText(mockText);
-      setScanState('scanned');
-      onScanChange?.(true, mockText);
-
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }).start();
-    }, 2200);
   };
 
   const handleRetake = () => {
@@ -104,20 +83,6 @@ export function CameraScanCard({
 
   const handleUpload = () => {
     if (disabled) return;
-    const randomFile = MOCK_IMAGE_FILES[Math.floor(Math.random() * MOCK_IMAGE_FILES.length)];
-    setUploadedFile(randomFile);
-    fadeAnim.setValue(0);
-
-    const mockText =
-      'Invoice #2024-0391\n\nDate: March 14, 2024\nAmount Due: $3,450.00\nDue Date: April 1, 2024\n\nServices rendered for Q1 design and development sprint.';
-    setPreviewText(mockText);
-    onScanChange?.(true, mockText, randomFile);
-
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 400,
-      useNativeDriver: true,
-    }).start();
   };
 
   const handleRemoveUpload = () => {
@@ -134,8 +99,6 @@ export function CameraScanCard({
     onScanChange?.(false, '');
     setMode(newMode);
   };
-
-  const getFileExt = (name: string) => name.split('.').pop()?.toUpperCase() || 'IMG';
 
   const accentColor = colors.text;
   const isScanned = scanState === 'scanned';

@@ -72,9 +72,8 @@ export default function SummarizeScreen() {
     setInputTypeIndex(index);
   };
 
-  const handleSimulateFileSelect = () => {
+  const handleFileSelect = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setSelectedFile('Q3_Financial_Report.pdf');
   };
 
   const handleRemoveFile = () => {
@@ -86,13 +85,10 @@ export default function SummarizeScreen() {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     if (type === 'file') {
       setInputTypeIndex(1);
-      setSelectedFile('Q4_Strategy_Deck.pdf');
     } else if (type === 'url') {
       setInputTypeIndex(2);
-      setUrl('https://techcrunch.com/ai-future-trends');
     } else if (type === 'text') {
       setInputTypeIndex(0);
-      setText('Meeting Notes: Discussed Q4 roadmap. Key deliverables include the new UI polish, performance improvements, and the launch of the translation feature. Action items assigned to the mobile team.');
     }
   };
 
@@ -205,7 +201,7 @@ export default function SummarizeScreen() {
               {inputTypeIndex === 1 && (
                 <FileUploadCard
                   fileName={selectedFile}
-                  onSelectFile={handleSimulateFileSelect}
+                  onSelectFile={handleFileSelect}
                   onRemoveFile={handleRemoveFile}
                   disabled={isLoading}
                   title={t('components.upload_title')}

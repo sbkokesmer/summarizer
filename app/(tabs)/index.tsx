@@ -19,7 +19,7 @@ import { FadeInView } from '@/components/FadeInView';
 import { SuggestionChips } from '@/components/SuggestionChips';
 import { EmptyStateCard } from '@/components/EmptyStateCard';
 import { LanguageSelectionSheet, LANGUAGES } from '@/components/LanguageSelectionSheet';
-import { ToneSelectionSheet, TONES } from '@/components/ToneSelectionSheet';
+import { SummaryStyleSheet, SUMMARY_STYLES } from '@/components/SummaryStyleSheet';
 import { PrivacyBadge } from '@/components/PrivacyBadge';
 import { callOpenAI } from '@/services/openai';
 
@@ -64,7 +64,7 @@ export default function SummarizeScreen() {
   const [isToneSheetVisible, setIsToneSheetVisible] = useState(false);
 
   const selectedLang = LANGUAGES.find(l => l.id === targetLangId) || LANGUAGES[0];
-  const selectedTone = TONES.find(t => t.id === toneId) || TONES[0];
+  const selectedTone = SUMMARY_STYLES.find(s => s.id === toneId) || SUMMARY_STYLES[0];
   const isTranslating = targetLangId !== 'auto';
 
   const handleInputTypeChange = (index: number) => {
@@ -250,7 +250,7 @@ export default function SummarizeScreen() {
               >
                 <View style={styles.configHeader}>
                   <Sparkles size={14} color={colors.textSecondary} />
-                  <Text style={[styles.configLabel, { color: colors.textSecondary }]}>{t('summarize.tone')}</Text>
+                  <Text style={[styles.configLabel, { color: colors.textSecondary }]}>{t('summarize.style')}</Text>
                 </View>
                 <View style={styles.configValueRow}>
                   <Text style={[styles.configValue, { color: colors.text }]} numberOfLines={1}>
@@ -299,7 +299,7 @@ export default function SummarizeScreen() {
         showAutoOption={true}
       />
 
-      <ToneSelectionSheet
+      <SummaryStyleSheet
         visible={isToneSheetVisible}
         onClose={() => setIsToneSheetVisible(false)}
         onSelect={setToneId}

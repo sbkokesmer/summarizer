@@ -8,43 +8,36 @@ interface ResultCardProps {
 }
 
 // A lightweight custom markdown renderer for bold text and bullet points
+const renderInlineText = (line: string, textColor: string) => {
+  const parts = line.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, partIndex) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <Text key={partIndex} style={{ fontWeight: '700', color: textColor }}>
+          {part.slice(2, -2)}
+        </Text>
+      );
+    }
+    return <Text key={partIndex}>{part}</Text>;
+  });
+};
+
 const renderSmartText = (text: string, textColor: string) => {
   const lines = text.split('\n');
-  
-  return lines.map((line, lineIndex) => {
-    // Handle Bullet Points
-    const isBullet = line.trim().startsWith('-');
-    const cleanLine = isBullet ? line.replace('-', '').trim() : line;
-    
-    // Handle Bold Text (**text**)
-    const parts = cleanLine.split(/(\*\*.*?\*\*)/g);
-    
-    const renderedLine = parts.map((part, partIndex) => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        return (
-          <Text key={partIndex} style={{ fontWeight: '700', color: textColor }}>
-            {part.slice(2, -2)}
-          </Text>
-        );
-      }
-      return <Text key={partIndex}>{part}</Text>;
-    });
 
-    if (isBullet) {
+  return lines.map((line, lineIndex) => {
+    if (line.startsWith('# ')) {
       return (
-        <View key={lineIndex} style={styles.bulletRow}>
-          <View style={[styles.bulletDot, { backgroundColor: textColor }]} />
-          <Text style={[styles.text, { color: textColor, flex: 1 }]}>
-            {renderedLine}
-          </Text>
-        </View>
+        <Text key={lineIndex} style={[styles.h1Text, { color: textColor }]}>
+          {line.slice(2)}
+        </Text>
       );
     }
 
     if (line.startsWith('## ')) {
       return (
         <Text key={lineIndex} style={[styles.sectionHeader, { color: textColor }]}>
-          {line.replace('## ', '')}
+          {line.slice(3)}
         </Text>
       );
     }
@@ -52,14 +45,27 @@ const renderSmartText = (text: string, textColor: string) => {
     if (line.startsWith('### ')) {
       return (
         <Text key={lineIndex} style={[styles.headerText, { color: textColor }]}>
-          {line.replace('### ', '')}
+          {line.slice(4)}
         </Text>
+      );
+    }
+
+    const isBullet = line.trim().startsWith('- ') || line.trim().startsWith('* ');
+    if (isBullet) {
+      const cleanLine = line.trim().slice(2);
+      return (
+        <View key={lineIndex} style={styles.bulletRow}>
+          <View style={[styles.bulletDot, { backgroundColor: textColor }]} />
+          <Text style={[styles.text, { color: textColor, flex: 1 }]}>
+            {renderInlineText(cleanLine, textColor)}
+          </Text>
+        </View>
       );
     }
 
     return (
       <Text key={lineIndex} style={[styles.text, { color: textColor, marginBottom: 8 }]}>
-        {renderedLine}
+        {renderInlineText(line, textColor)}
       </Text>
     );
   });
@@ -139,6 +145,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '400',
     lineHeight: 26,
+  },
+  h1Text: {
+    fontSize: 24,
+    fontWeight: '800',
+    marginTop: 24,
+    marginBottom: 12,
+    letterSpacing: -0.8,
   },
   sectionHeader: {
     fontSize: 20,

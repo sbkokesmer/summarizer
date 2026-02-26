@@ -17,7 +17,7 @@ export default {
     audio: "Ses",
     camera: "Kamera",
     output: "Çıktı Dili",
-    tone: "Ton",
+    style: "Özet Stili",
     btn_summarize: "Özetle",
     btn_summarize_translate: "Özetle ve Çevir",
     missing_input: "Eksik Girdi",

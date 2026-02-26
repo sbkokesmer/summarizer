@@ -40,9 +40,14 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const toneInstruction = tone && tone !== "standard"
-      ? `Use a ${tone} tone in your response.`
-      : "Use a clear, professional tone.";
+    const styleInstructions: Record<string, string> = {
+      standard: `Structure your response with a "# TL;DR" section (2-3 sentences) followed by a "## Key Takeaways" section (4-6 bullet points).`,
+      detailed: `Provide a thorough, in-depth summary. Start with a "# TL;DR" section, then a "## Key Takeaways" section, then a "## Detailed Breakdown" section with sub-headings for each major topic, supporting details, and important context.`,
+      concise: `Write a single cohesive paragraph of no more than 5 sentences. No headings, no bullets. Just the most essential information.`,
+      bullets: `Output ONLY a flat bullet-point list of key takeaways. No headings, no paragraphs, no introduction. Start directly with the first bullet point.`,
+      curt: `Write exactly 3 sentences maximum. Be blunt, direct, and skip all pleasantries. No headings, no bullets.`,
+    };
+    const toneInstruction = styleInstructions[tone] || styleInstructions["standard"];
 
     let extractedText = "";
     const mimeType = file.type || "";
@@ -75,17 +80,16 @@ Deno.serve(async (req: Request) => {
 
       if (action === "summarize") {
         systemPrompt = `You are an expert summarizer. ${toneInst}
-CRITICAL LANGUAGE RULE: Write your ENTIRE response in ${lang} only.
-Return markdown with a TL;DR section and Key Takeaways section in ${lang}.`;
+CRITICAL LANGUAGE RULE: Write your ENTIRE response in ${lang} only.`;
         userPrompt = `Summarize the content of this PDF document. Write your entire response in ${lang}.`;
       } else if (action === "translate") {
-        systemPrompt = `You are an expert translator. ${toneInst}
+        systemPrompt = `You are an expert translator.
 CRITICAL RULE: Output ONLY the translated text in ${lang}. No headings, no labels, no markdown formatting. Just the raw translation.`;
         userPrompt = `Translate all text content from this PDF to ${lang}. Output only the translation.`;
       } else {
         systemPrompt = `You are an expert summarizer and translator. ${toneInst}
 CRITICAL LANGUAGE RULE: Write your ENTIRE response in ${lang} only.
-Return markdown with: TL;DR section, Key Takeaways section, Translation section. All in ${lang}.`;
+After applying the summary style above, also include a "## Translation" section with the full translated text in ${lang}.`;
         userPrompt = `Summarize and translate the content of this PDF to ${lang}. Write your entire response in ${lang}.`;
       }
 
@@ -154,17 +158,16 @@ Return markdown with: TL;DR section, Key Takeaways section, Translation section.
 
     if (action === "summarize") {
       systemPrompt = `You are an expert summarizer. ${toneInstruction}
-CRITICAL LANGUAGE RULE: Write your ENTIRE response in ${targetLanguage} only.
-Return markdown with a TL;DR section and Key Takeaways section in ${targetLanguage}.`;
+CRITICAL LANGUAGE RULE: Write your ENTIRE response in ${targetLanguage} only.`;
       actionVerb = `Summarize the following document content. Write your entire response in ${targetLanguage}`;
     } else if (action === "translate") {
-      systemPrompt = `You are an expert translator. ${toneInstruction}
+      systemPrompt = `You are an expert translator.
 CRITICAL RULE: Output ONLY the translated text in ${targetLanguage}. No headings, labels, or formatting. Just the raw translation.`;
       actionVerb = `Translate the following document content to ${targetLanguage}. Output only the translation`;
     } else {
       systemPrompt = `You are an expert summarizer and translator. ${toneInstruction}
 CRITICAL LANGUAGE RULE: Write your ENTIRE response in ${targetLanguage} only.
-Return markdown with: TL;DR section, Key Takeaways section, Translation section. All in ${targetLanguage}.`;
+After applying the summary style above, also include a "## Translation" section with the full translated text in ${targetLanguage}.`;
       actionVerb = `Summarize and translate the following document content to ${targetLanguage}. Write your entire response in ${targetLanguage}`;
     }
 

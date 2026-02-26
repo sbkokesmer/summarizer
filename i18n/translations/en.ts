@@ -17,7 +17,7 @@ export default {
     audio: "Audio",
     camera: "Camera",
     output: "Output Language",
-    tone: "Tone",
+    style: "Summary Style",
     btn_summarize: "Summarize",
     btn_summarize_translate: "Summarize & Translate",
     missing_input: "Missing Input",

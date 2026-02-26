@@ -61,29 +61,30 @@ Deno.serve(async (req: Request) => {
       throw new Error("No speech detected in the audio file.");
     }
 
-    const toneInstruction = tone && tone !== "standard"
-      ? `Use a ${tone} tone in your response.`
-      : "Use a clear, professional tone.";
+    const styleInstructions: Record<string, string> = {
+      standard: `Structure your response with a "# TL;DR" section (2-3 sentences) followed by a "## Key Takeaways" section (4-6 bullet points).`,
+      detailed: `Provide a thorough, in-depth summary. Start with a "# TL;DR" section, then a "## Key Takeaways" section, then a "## Detailed Breakdown" section with sub-headings for each major topic, supporting details, and important context.`,
+      concise: `Write a single cohesive paragraph of no more than 5 sentences. No headings, no bullets. Just the most essential information.`,
+      bullets: `Output ONLY a flat bullet-point list of key takeaways. No headings, no paragraphs, no introduction. Start directly with the first bullet point.`,
+      curt: `Write exactly 3 sentences maximum. Be blunt, direct, and skip all pleasantries. No headings, no bullets.`,
+    };
+    const toneInstruction = styleInstructions[tone] || styleInstructions["standard"];
 
     let systemPrompt = "";
     let actionVerb = "";
 
     if (action === "summarize") {
       systemPrompt = `You are an expert summarizer. ${toneInstruction}
-CRITICAL LANGUAGE RULE: You MUST write your ENTIRE response in ${targetLanguage} only.
-Return your response in markdown format with a TL;DR section and Key Takeaways section, both written entirely in ${targetLanguage}.`;
+CRITICAL LANGUAGE RULE: You MUST write your ENTIRE response in ${targetLanguage} only.`;
       actionVerb = `Summarize the following transcribed audio content. Write your entire response in ${targetLanguage}`;
     } else if (action === "translate") {
-      systemPrompt = `You are an expert translator. ${toneInstruction}
+      systemPrompt = `You are an expert translator.
 CRITICAL RULE: Output ONLY the translated text in ${targetLanguage}. Do NOT add any headings, section titles, markdown formatting, labels, introductions, or explanations. Just the raw translation itself, nothing else.`;
       actionVerb = `Translate the following transcribed audio to ${targetLanguage}. Output only the ${targetLanguage} translation`;
     } else {
       systemPrompt = `You are an expert summarizer and translator. ${toneInstruction}
 CRITICAL LANGUAGE RULE: You MUST write your ENTIRE response in ${targetLanguage} only.
-Return your response in markdown with:
-- A TL;DR section (in ${targetLanguage})
-- A Key Takeaways section (in ${targetLanguage})
-- A Translation section (in ${targetLanguage})`;
+After applying the summary style above, also include a "## Translation" section with the full translated text in ${targetLanguage}.`;
       actionVerb = `Summarize and translate the following transcribed audio to ${targetLanguage}. Write your entire response in ${targetLanguage}`;
     }
 

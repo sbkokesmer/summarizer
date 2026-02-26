@@ -9,6 +9,7 @@ export interface SelectedFile {
   name: string;
   base64: string;
   mimeType: string;
+  blob?: Blob;
 }
 
 interface FileUploadCardProps {
@@ -40,7 +41,12 @@ export function FileUploadCard({ file, onFileSelected, onRemoveFile, disabled, t
         reader.onload = () => {
           const dataUrl = reader.result as string;
           const base64 = dataUrl.split(',')[1];
-          onFileSelected({ name: pickedFile.name, base64, mimeType: pickedFile.type || 'application/octet-stream' });
+          onFileSelected({
+            name: pickedFile.name,
+            base64,
+            mimeType: pickedFile.type || 'application/octet-stream',
+            blob: pickedFile,
+          });
         };
         reader.readAsDataURL(pickedFile);
       };

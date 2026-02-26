@@ -128,7 +128,11 @@ export default function SummarizeScreen() {
       if (inputTypeIndex === 0) {
         params.text = text;
       } else if (inputTypeIndex === 1 && selectedFile) {
-        params.fileBase64 = selectedFile.base64;
+        if (selectedFile.blob) {
+          params.fileBlob = selectedFile.blob;
+        } else {
+          params.fileBase64 = selectedFile.base64;
+        }
         params.fileMimeType = selectedFile.mimeType;
         params.fileName = selectedFile.name;
       } else if (inputTypeIndex === 2) {

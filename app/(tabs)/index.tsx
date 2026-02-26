@@ -120,7 +120,7 @@ export default function SummarizeScreen() {
     }
 
     try {
-      const action = isTranslating ? 'summarize_translate' : 'summarize';
+      const action = 'summarize';
       const targetLanguage = isTranslating ? selectedLang.label : undefined;
 
       let params: Parameters<typeof callOpenAI>[0] = { action, targetLanguage, tone: toneId };

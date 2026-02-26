@@ -41,7 +41,14 @@ const renderSmartText = (text: string, textColor: string) => {
       );
     }
 
-    // Handle Headers (###)
+    if (line.startsWith('## ')) {
+      return (
+        <Text key={lineIndex} style={[styles.sectionHeader, { color: textColor }]}>
+          {line.replace('## ', '')}
+        </Text>
+      );
+    }
+
     if (line.startsWith('### ')) {
       return (
         <Text key={lineIndex} style={[styles.headerText, { color: textColor }]}>
@@ -133,11 +140,18 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     lineHeight: 26,
   },
+  sectionHeader: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginTop: 20,
+    marginBottom: 10,
+    letterSpacing: -0.5,
+  },
   headerText: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     marginTop: 12,
-    marginBottom: 8,
+    marginBottom: 6,
     letterSpacing: -0.3,
   },
   bulletRow: {

@@ -8,10 +8,10 @@ import { Colors } from '@/constants/Colors';
 import { AppIdentityBadge } from '@/components/AppIdentityBadge';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { InputCard } from '@/components/InputCard';
-import { FileUploadCard } from '@/components/FileUploadCard';
+import { FileUploadCard, SelectedFile } from '@/components/FileUploadCard';
 import { UrlInputCard } from '@/components/UrlInputCard';
-import { AudioRecordCard } from '@/components/AudioRecordCard';
-import { CameraScanCard } from '@/components/CameraScanCard';
+import { AudioRecordCard, SelectedAudio } from '@/components/AudioRecordCard';
+import { CameraScanCard, ScannedImage } from '@/components/CameraScanCard';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { SecondaryButton } from '@/components/SecondaryButton';
 import { ResultCard } from '@/components/ResultCard';
@@ -37,12 +37,12 @@ export default function TranslateScreen() {
 
   const [inputTypeIndex, setInputTypeIndex] = useState(0);
   const [text, setText] = useState('');
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<SelectedFile | null>(null);
   const [url, setUrl] = useState('');
   const [hasAudio, setHasAudio] = useState(false);
-  const [audioDuration, setAudioDuration] = useState('');
+  const [audioData, setAudioData] = useState<SelectedAudio | undefined>(undefined);
   const [hasScan, setHasScan] = useState(false);
-  const [scanText, setScanText] = useState('');
+  const [scanImage, setScanImage] = useState<ScannedImage | undefined>(undefined);
 
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState('');
@@ -65,25 +65,21 @@ export default function TranslateScreen() {
     setInputTypeIndex(index);
   };
 
-  const handleFileSelect = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-  };
-
   const handleRemoveFile = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setSelectedFile(null);
   };
 
-  const handleAudioChange = (hasRecording: boolean, duration: string) => {
+  const handleAudioChange = (hasRecording: boolean, duration: string, audio?: SelectedAudio) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setHasAudio(hasRecording);
-    setAudioDuration(duration);
+    setAudioData(audio);
   };
 
-  const handleScanChange = (hasResult: boolean, preview?: string) => {
+  const handleScanChange = (hasResult: boolean, image?: ScannedImage) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setHasScan(hasResult);
-    setScanText(preview || '');
+    setScanImage(image);
   };
 
   const checkInput = () => {
@@ -93,15 +89,6 @@ export default function TranslateScreen() {
     if (inputTypeIndex === 3 && hasAudio) return true;
     if (inputTypeIndex === 4 && hasScan) return true;
     return false;
-  };
-
-  const getInputText = () => {
-    if (inputTypeIndex === 0) return text;
-    if (inputTypeIndex === 1) return selectedFile || '';
-    if (inputTypeIndex === 2) return url;
-    if (inputTypeIndex === 3) return `[Audio recording: ${audioDuration}]`;
-    if (inputTypeIndex === 4) return scanText;
-    return '';
   };
 
   const executeAction = async (actionType: 'translate' | 'both') => {
@@ -120,23 +107,34 @@ export default function TranslateScreen() {
     }
 
     try {
-      const inputText = getInputText();
       const action = actionType === 'both' ? 'summarize_translate' : 'translate';
+      let params: Parameters<typeof callOpenAI>[0] = { action, targetLanguage: selectedLang.label, tone: toneId };
 
-      const response = await callOpenAI({
-        action,
-        text: inputText,
-        targetLanguage: selectedLang.label,
-        tone: toneId,
-      });
+      if (inputTypeIndex === 0) {
+        params.text = text;
+        if (keepOriginal) params.text = text;
+      } else if (inputTypeIndex === 1 && selectedFile) {
+        params.fileBase64 = selectedFile.base64;
+        params.fileMimeType = selectedFile.mimeType;
+        params.fileName = selectedFile.name;
+      } else if (inputTypeIndex === 2) {
+        params.url = url;
+      } else if (inputTypeIndex === 3 && audioData) {
+        params.audioBase64 = audioData.base64;
+        params.audioMimeType = audioData.mimeType;
+        params.fileName = audioData.name;
+      } else if (inputTypeIndex === 4 && scanImage) {
+        params.imageBase64 = scanImage.base64;
+      }
 
-      let finalResult = response;
-      if (keepOriginal) {
-        finalResult += `\n\n### Original Text\n${inputText}`;
+      let response = await callOpenAI(params);
+
+      if (keepOriginal && inputTypeIndex === 0 && text) {
+        response += `\n\n### Original Text\n${text}`;
       }
 
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setResult(finalResult);
+      setResult(response);
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
     } finally {
@@ -150,35 +148,18 @@ export default function TranslateScreen() {
   return (
     <View style={styles.root}>
       <LinearGradient colors={gradientColors} style={StyleSheet.absoluteFill} />
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <Animated.ScrollView
           style={styles.scrollView}
-          contentContainerStyle={[
-            styles.content,
-            {
-              paddingTop: insets.top + 16,
-              paddingBottom: insets.bottom + 140,
-            }
-          ]}
+          contentContainerStyle={[styles.content, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 140 }]}
           showsVerticalScrollIndicator={false}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: true }
-          )}
+          onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
           scrollEventThrottle={16}
         >
           <AppIdentityBadge title="Translate" />
 
           <View style={styles.paddingHorizontal}>
-            <SegmentedControl
-              options={INPUT_TYPES}
-              selectedIndex={inputTypeIndex}
-              onChange={handleInputTypeChange}
-              disabled={isLoading}
-            />
+            <SegmentedControl options={INPUT_TYPES} selectedIndex={inputTypeIndex} onChange={handleInputTypeChange} disabled={isLoading} />
           </View>
 
           <View style={styles.paddingHorizontal}>
@@ -188,8 +169,8 @@ export default function TranslateScreen() {
               )}
               {inputTypeIndex === 1 && (
                 <FileUploadCard
-                  fileName={selectedFile}
-                  onSelectFile={handleFileSelect}
+                  file={selectedFile}
+                  onFileSelected={(f) => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setSelectedFile(f); }}
                   onRemoveFile={handleRemoveFile}
                   disabled={isLoading}
                 />
@@ -319,67 +300,16 @@ const styles = StyleSheet.create({
   scrollView: { flex: 1 },
   content: {},
   paddingHorizontal: { paddingHorizontal: 20 },
-  configGrid: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  configButton: {
-    flex: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  configHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 6,
-  },
-  configLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  configValueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  configValue: {
-    fontSize: 15,
-    fontWeight: '600',
-    flex: 1,
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-    marginBottom: 20,
-  },
-  toggleText: {
-    fontSize: 14,
-  },
-  resultSection: {
-    marginTop: 24,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    width: '100%',
-    marginBottom: 24,
-  },
-  errorBox: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 14,
-    marginTop: 12,
-  },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 14,
-    lineHeight: 20,
-  },
+  configGrid: { flexDirection: 'row', gap: 12, marginBottom: 16 },
+  configButton: { flex: 1, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 16, borderWidth: 1 },
+  configHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+  configLabel: { fontSize: 12, fontWeight: '500', textTransform: 'uppercase', letterSpacing: 0.5 },
+  configValueRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  configValue: { fontSize: 15, fontWeight: '600', flex: 1 },
+  toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 4, marginBottom: 20 },
+  toggleText: { fontSize: 14 },
+  resultSection: { marginTop: 24 },
+  divider: { height: StyleSheet.hairlineWidth, width: '100%', marginBottom: 24 },
+  errorBox: { borderWidth: 1, borderRadius: 12, padding: 14, marginTop: 12 },
+  errorText: { color: '#FF3B30', fontSize: 14, lineHeight: 20 },
 });

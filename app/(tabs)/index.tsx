@@ -9,10 +9,10 @@ import { Colors } from '@/constants/Colors';
 import { AppIdentityBadge } from '@/components/AppIdentityBadge';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { InputCard } from '@/components/InputCard';
-import { FileUploadCard } from '@/components/FileUploadCard';
+import { FileUploadCard, SelectedFile } from '@/components/FileUploadCard';
 import { UrlInputCard } from '@/components/UrlInputCard';
-import { AudioRecordCard } from '@/components/AudioRecordCard';
-import { CameraScanCard } from '@/components/CameraScanCard';
+import { AudioRecordCard, SelectedAudio } from '@/components/AudioRecordCard';
+import { CameraScanCard, ScannedImage } from '@/components/CameraScanCard';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ResultCard } from '@/components/ResultCard';
 import { FadeInView } from '@/components/FadeInView';
@@ -46,12 +46,12 @@ export default function SummarizeScreen() {
 
   const [inputTypeIndex, setInputTypeIndex] = useState(0);
   const [text, setText] = useState('');
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<SelectedFile | null>(null);
   const [url, setUrl] = useState('');
   const [hasAudio, setHasAudio] = useState(false);
-  const [audioDuration, setAudioDuration] = useState('');
+  const [audioData, setAudioData] = useState<SelectedAudio | undefined>(undefined);
   const [hasScan, setHasScan] = useState(false);
-  const [scanText, setScanText] = useState('');
+  const [scanImage, setScanImage] = useState<ScannedImage | undefined>(undefined);
 
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState('');
@@ -72,10 +72,6 @@ export default function SummarizeScreen() {
     setInputTypeIndex(index);
   };
 
-  const handleFileSelect = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-  };
-
   const handleRemoveFile = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setSelectedFile(null);
@@ -83,25 +79,21 @@ export default function SummarizeScreen() {
 
   const handleSuggestionSelect = (type: 'file' | 'url' | 'text') => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    if (type === 'file') {
-      setInputTypeIndex(1);
-    } else if (type === 'url') {
-      setInputTypeIndex(2);
-    } else if (type === 'text') {
-      setInputTypeIndex(0);
-    }
+    if (type === 'file') setInputTypeIndex(1);
+    else if (type === 'url') setInputTypeIndex(2);
+    else if (type === 'text') setInputTypeIndex(0);
   };
 
-  const handleAudioChange = (hasRecording: boolean, duration: string) => {
+  const handleAudioChange = (hasRecording: boolean, duration: string, audio?: SelectedAudio) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setHasAudio(hasRecording);
-    setAudioDuration(duration);
+    setAudioData(audio);
   };
 
-  const handleScanChange = (hasResult: boolean, preview?: string) => {
+  const handleScanChange = (hasResult: boolean, image?: ScannedImage) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setHasScan(hasResult);
-    setScanText(preview || '');
+    setScanImage(image);
   };
 
   const checkInput = () => {
@@ -111,15 +103,6 @@ export default function SummarizeScreen() {
     if (inputTypeIndex === 3 && hasAudio) return true;
     if (inputTypeIndex === 4 && hasScan) return true;
     return false;
-  };
-
-  const getInputText = () => {
-    if (inputTypeIndex === 0) return text;
-    if (inputTypeIndex === 1) return selectedFile || '';
-    if (inputTypeIndex === 2) return url;
-    if (inputTypeIndex === 3) return `[Audio recording: ${audioDuration}]`;
-    if (inputTypeIndex === 4) return scanText;
-    return '';
   };
 
   const executeAction = async () => {
@@ -137,15 +120,28 @@ export default function SummarizeScreen() {
     }
 
     try {
-      const inputText = getInputText();
       const action = isTranslating ? 'summarize_translate' : 'summarize';
+      const targetLanguage = isTranslating ? selectedLang.label : undefined;
 
-      const response = await callOpenAI({
-        action,
-        text: inputText,
-        targetLanguage: isTranslating ? selectedLang.label : undefined,
-        tone: toneId,
-      });
+      let params: Parameters<typeof callOpenAI>[0] = { action, targetLanguage, tone: toneId };
+
+      if (inputTypeIndex === 0) {
+        params.text = text;
+      } else if (inputTypeIndex === 1 && selectedFile) {
+        params.fileBase64 = selectedFile.base64;
+        params.fileMimeType = selectedFile.mimeType;
+        params.fileName = selectedFile.name;
+      } else if (inputTypeIndex === 2) {
+        params.url = url;
+      } else if (inputTypeIndex === 3 && audioData) {
+        params.audioBase64 = audioData.base64;
+        params.audioMimeType = audioData.mimeType;
+        params.fileName = audioData.name;
+      } else if (inputTypeIndex === 4 && scanImage) {
+        params.imageBase64 = scanImage.base64;
+      }
+
+      const response = await callOpenAI(params);
 
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setResult(response);
@@ -162,35 +158,18 @@ export default function SummarizeScreen() {
   return (
     <View style={styles.root}>
       <LinearGradient colors={gradientColors} style={StyleSheet.absoluteFill} />
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <Animated.ScrollView
           style={styles.scrollView}
-          contentContainerStyle={[
-            styles.content,
-            {
-              paddingTop: insets.top + 16,
-              paddingBottom: insets.bottom + 140,
-            }
-          ]}
+          contentContainerStyle={[styles.content, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 140 }]}
           showsVerticalScrollIndicator={false}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: true }
-          )}
+          onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
           scrollEventThrottle={16}
         >
           <AppIdentityBadge title={t('summarize.title')} />
 
           <View style={styles.paddingHorizontal}>
-            <SegmentedControl
-              options={INPUT_TYPES}
-              selectedIndex={inputTypeIndex}
-              onChange={handleInputTypeChange}
-              disabled={isLoading}
-            />
+            <SegmentedControl options={INPUT_TYPES} selectedIndex={inputTypeIndex} onChange={handleInputTypeChange} disabled={isLoading} />
           </View>
 
           <View style={styles.paddingHorizontal}>
@@ -200,8 +179,8 @@ export default function SummarizeScreen() {
               )}
               {inputTypeIndex === 1 && (
                 <FileUploadCard
-                  fileName={selectedFile}
-                  onSelectFile={handleFileSelect}
+                  file={selectedFile}
+                  onFileSelected={(f) => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setSelectedFile(f); }}
                   onRemoveFile={handleRemoveFile}
                   disabled={isLoading}
                   title={t('components.upload_title')}
@@ -332,57 +311,14 @@ const styles = StyleSheet.create({
   scrollView: { flex: 1 },
   content: {},
   paddingHorizontal: { paddingHorizontal: 20 },
-  configGrid: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  configButton: {
-    flex: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  configHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 6,
-  },
-  configLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  configValueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  configValue: {
-    fontSize: 15,
-    fontWeight: '600',
-    flex: 1,
-  },
-  resultSection: {
-    marginTop: 24,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    width: '100%',
-    marginBottom: 24,
-  },
-  errorBox: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 14,
-    marginTop: 12,
-  },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 14,
-    lineHeight: 20,
-  },
+  configGrid: { flexDirection: 'row', gap: 12, marginBottom: 16 },
+  configButton: { flex: 1, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 16, borderWidth: 1 },
+  configHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+  configLabel: { fontSize: 12, fontWeight: '500', textTransform: 'uppercase', letterSpacing: 0.5 },
+  configValueRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  configValue: { fontSize: 15, fontWeight: '600', flex: 1 },
+  resultSection: { marginTop: 24 },
+  divider: { height: StyleSheet.hairlineWidth, width: '100%', marginBottom: 24 },
+  errorBox: { borderWidth: 1, borderRadius: 12, padding: 14, marginTop: 12 },
+  errorText: { color: '#FF3B30', fontSize: 14, lineHeight: 20 },
 });

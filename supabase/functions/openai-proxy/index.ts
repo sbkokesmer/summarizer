@@ -8,9 +8,31 @@ const corsHeaders = {
 
 interface RequestBody {
   action: "summarize" | "translate" | "summarize_translate";
-  text: string;
+  text?: string;
+  fileBase64?: string;
+  fileMimeType?: string;
+  fileName?: string;
+  imageBase64?: string;
+  audioBase64?: string;
+  audioMimeType?: string;
+  url?: string;
   targetLanguage?: string;
   tone?: string;
+}
+
+async function fetchUrlContent(url: string): Promise<string> {
+  const res = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; SummaryBot/1.0)" },
+  });
+  if (!res.ok) throw new Error(`Failed to fetch URL: ${res.status}`);
+  const html = await res.text();
+  const stripped = html
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return stripped.slice(0, 12000);
 }
 
 Deno.serve(async (req: Request) => {
@@ -28,31 +50,20 @@ Deno.serve(async (req: Request) => {
     }
 
     const body: RequestBody = await req.json();
-    const { action, text, targetLanguage, tone } = body;
-
-    if (!text || !text.trim()) {
-      return new Response(
-        JSON.stringify({ error: "Text is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    let systemPrompt = "";
-    let userPrompt = "";
+    const { action, text, fileBase64, fileMimeType, fileName, imageBase64, audioBase64, audioMimeType, url, targetLanguage, tone } = body;
 
     const toneInstruction = tone && tone !== "standard"
       ? `Use a ${tone} tone in your response.`
       : "Use a clear, professional tone.";
 
+    let systemPrompt = "";
+
     if (action === "summarize") {
       systemPrompt = `You are an expert summarizer. ${toneInstruction} Return your response in markdown format with a TL;DR section and Key Takeaways section.`;
-      userPrompt = `Summarize the following text:\n\n${text}`;
     } else if (action === "translate") {
-      systemPrompt = `You are an expert translator. ${toneInstruction} Translate the given text accurately while preserving meaning and context. Return your response in markdown format with a Translation section.`;
-      userPrompt = `Translate the following text to ${targetLanguage || "English"}:\n\n${text}`;
+      systemPrompt = `You are an expert translator. ${toneInstruction} Translate the given content accurately while preserving meaning and context. Return your response in markdown format with a Translation section.`;
     } else if (action === "summarize_translate") {
-      systemPrompt = `You are an expert summarizer and translator. ${toneInstruction} First summarize the text, then translate the summary. Return your response in markdown with a TL;DR section, Key Takeaways section, and a Translation section.`;
-      userPrompt = `Summarize and then translate to ${targetLanguage || "English"} the following text:\n\n${text}`;
+      systemPrompt = `You are an expert summarizer and translator. ${toneInstruction} First summarize the content, then translate the summary. Return your response in markdown with a TL;DR section, Key Takeaways section, and a Translation section.`;
     } else {
       return new Response(
         JSON.stringify({ error: "Invalid action" }),
@@ -60,21 +71,95 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const actionVerb =
+      action === "summarize"
+        ? "Summarize"
+        : action === "translate"
+        ? `Translate to ${targetLanguage || "English"}`
+        : `Summarize and translate to ${targetLanguage || "English"}`;
+
+    type OpenAIMessage = { role: string; content: string | unknown[] };
+    let messages: OpenAIMessage[] = [];
+
+    if (imageBase64) {
+      messages = [
+        { role: "system", content: systemPrompt },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: `${actionVerb} the text content visible in this image:` },
+            { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageBase64}` } },
+          ],
+        },
+      ];
+    } else if (audioBase64) {
+      const audioBytes = Uint8Array.from(atob(audioBase64), (c) => c.charCodeAt(0));
+      const audioBlob = new Blob([audioBytes], { type: audioMimeType || "audio/m4a" });
+      const form = new FormData();
+      form.append("file", audioBlob, fileName || "audio.m4a");
+      form.append("model", "whisper-1");
+
+      const transcribeRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${openaiApiKey}` },
+        body: form,
+      });
+
+      if (!transcribeRes.ok) {
+        const err = await transcribeRes.json();
+        throw new Error(err.error?.message || "Audio transcription failed");
+      }
+
+      const { text: transcript } = await transcribeRes.json();
+      messages = [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `${actionVerb} the following transcribed audio:\n\n${transcript}` },
+      ];
+    } else if (fileBase64) {
+      const fileBytes = Uint8Array.from(atob(fileBase64), (c) => c.charCodeAt(0));
+      let fileText = new TextDecoder("utf-8", { fatal: false }).decode(fileBytes);
+      fileText = fileText.replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s{3,}/g, "\n").trim();
+
+      if (fileText.length < 80) {
+        throw new Error(
+          "Could not extract readable text from this file. Please use a plain text (.txt) file or paste your content directly."
+        );
+      }
+
+      messages = [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `${actionVerb} the following document content:\n\n${fileText.slice(0, 12000)}` },
+      ];
+    } else if (url) {
+      const urlContent = await fetchUrlContent(url);
+      if (!urlContent || urlContent.length < 50) {
+        throw new Error("Could not extract content from this URL. Please try a different link.");
+      }
+      messages = [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `${actionVerb} the following web page content:\n\n${urlContent}` },
+      ];
+    } else if (text && text.trim()) {
+      messages = [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `${actionVerb} the following text:\n\n${text}` },
+      ];
+    } else {
+      return new Response(
+        JSON.stringify({ error: "No content provided" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const model = imageBase64 ? "gpt-4o" : "gpt-4o-mini";
+
     const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${openaiApiKey}`,
+        Authorization: `Bearer ${openaiApiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        max_tokens: 1500,
-        temperature: 0.7,
-      }),
+      body: JSON.stringify({ model, messages, max_tokens: 2000, temperature: 0.7 }),
     });
 
     if (!openaiResponse.ok) {
@@ -88,14 +173,14 @@ Deno.serve(async (req: Request) => {
     const data = await openaiResponse.json();
     const result = data.choices?.[0]?.message?.content || "";
 
-    return new Response(
-      JSON.stringify({ result }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ result }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Internal server error";
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

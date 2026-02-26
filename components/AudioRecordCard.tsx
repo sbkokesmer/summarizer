@@ -7,12 +7,22 @@ import {
   useColorScheme,
   Animated,
   Easing,
+  Platform,
 } from 'react-native';
 import { Mic, Square, Trash2, Play, Pause, Upload, Music } from 'lucide-react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+import { Audio } from 'expo-av';
 import { Colors } from '@/constants/Colors';
 
+export interface SelectedAudio {
+  name: string;
+  base64: string;
+  mimeType: string;
+}
+
 interface AudioRecordCardProps {
-  onRecordingChange?: (hasRecording: boolean, durationLabel: string, fileName?: string) => void;
+  onRecordingChange?: (hasRecording: boolean, durationLabel: string, audio?: SelectedAudio) => void;
   disabled?: boolean;
   title?: string;
   description?: string;
@@ -20,7 +30,6 @@ interface AudioRecordCardProps {
 
 type AudioMode = 'record' | 'upload';
 type RecordState = 'idle' | 'recording' | 'recorded' | 'playing';
-
 
 export function AudioRecordCard({
   onRecordingChange,
@@ -35,12 +44,14 @@ export function AudioRecordCard({
   const [mode, setMode] = useState<AudioMode>('record');
   const [state, setState] = useState<RecordState>('idle');
   const [elapsed, setElapsed] = useState(0);
-  const [uploadedFile, setUploadedFile] = useState<string | null>(null);
+  const [uploadedAudio, setUploadedAudio] = useState<SelectedAudio | null>(null);
+
+  const recordingRef = useRef<Audio.Recording | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const recordedUriRef = useRef<string | null>(null);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const waveAnims = useRef(
-    Array.from({ length: 5 }, () => new Animated.Value(0.3))
-  ).current;
+  const waveAnims = useRef(Array.from({ length: 5 }, () => new Animated.Value(0.3))).current;
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pulseRef = useRef<Animated.CompositeAnimation | null>(null);
   const waveRef = useRef<Animated.CompositeAnimation | null>(null);
@@ -50,24 +61,16 @@ export function AudioRecordCard({
       if (timerRef.current) clearInterval(timerRef.current);
       pulseRef.current?.stop();
       waveRef.current?.stop();
+      recordingRef.current?.stopAndUnloadAsync().catch(() => {});
+      soundRef.current?.unloadAsync().catch(() => {});
     };
   }, []);
 
   const startPulse = () => {
     pulseRef.current = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.15,
-          duration: 600,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 600,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
+        Animated.timing(pulseAnim, { toValue: 1.15, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 600, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     );
     pulseRef.current.start();
@@ -80,74 +83,121 @@ export function AudioRecordCard({
 
   const startWaves = () => {
     waveRef.current = Animated.loop(
-      Animated.stagger(
-        80,
-        waveAnims.map((anim, i) =>
-          Animated.sequence([
-            Animated.timing(anim, {
-              toValue: 0.3 + (i % 3) * 0.25 + Math.random() * 0.2,
-              duration: 300 + i * 40,
-              easing: Easing.inOut(Easing.ease),
-              useNativeDriver: true,
-            }),
-            Animated.timing(anim, {
-              toValue: 0.3,
-              duration: 300 + i * 40,
-              easing: Easing.inOut(Easing.ease),
-              useNativeDriver: true,
-            }),
-          ])
-        )
-      )
+      Animated.stagger(80, waveAnims.map((anim, i) =>
+        Animated.sequence([
+          Animated.timing(anim, { toValue: 0.3 + (i % 3) * 0.25 + 0.1, duration: 300 + i * 40, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(anim, { toValue: 0.3, duration: 300 + i * 40, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        ])
+      ))
     );
     waveRef.current.start();
   };
 
   const stopWaves = () => {
     waveRef.current?.stop();
-    waveAnims.forEach((anim) =>
-      Animated.spring(anim, { toValue: 0.3, useNativeDriver: true }).start()
-    );
+    waveAnims.forEach((anim) => Animated.spring(anim, { toValue: 0.3, useNativeDriver: true }).start());
   };
 
-  const handleRecord = () => {
+  const handleRecord = async () => {
     if (state === 'idle') {
+      if (Platform.OS === 'web') {
+        setState('recording');
+        setElapsed(0);
+        startPulse();
+        startWaves();
+        timerRef.current = setInterval(() => setElapsed((p) => p + 1), 1000);
+        return;
+      }
+      const { granted } = await Audio.requestPermissionsAsync();
+      if (!granted) return;
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
+      const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      recordingRef.current = recording;
       setState('recording');
       setElapsed(0);
       startPulse();
       startWaves();
-      timerRef.current = setInterval(() => {
-        setElapsed((p) => p + 1);
-      }, 1000);
+      timerRef.current = setInterval(() => setElapsed((p) => p + 1), 1000);
     } else if (state === 'recording') {
       if (timerRef.current) clearInterval(timerRef.current);
       stopPulse();
       stopWaves();
+      if (recordingRef.current) {
+        await recordingRef.current.stopAndUnloadAsync();
+        const uri = recordingRef.current.getURI();
+        recordedUriRef.current = uri || null;
+        recordingRef.current = null;
+        if (uri) {
+          const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+          const audio: SelectedAudio = { name: 'recording.m4a', base64, mimeType: 'audio/m4a' };
+          setState('recorded');
+          onRecordingChange?.(true, formatTime(elapsed), audio);
+          return;
+        }
+      }
       setState('recorded');
       onRecordingChange?.(true, formatTime(elapsed));
     }
   };
 
-  const handleDiscard = () => {
+  const handleDiscard = async () => {
     if (timerRef.current) clearInterval(timerRef.current);
     stopPulse();
     stopWaves();
+    if (recordingRef.current) {
+      await recordingRef.current.stopAndUnloadAsync().catch(() => {});
+      recordingRef.current = null;
+    }
+    if (soundRef.current) {
+      await soundRef.current.unloadAsync().catch(() => {});
+      soundRef.current = null;
+    }
+    recordedUriRef.current = null;
     setState('idle');
     setElapsed(0);
-    setUploadedFile(null);
+    setUploadedAudio(null);
     onRecordingChange?.(false, '');
   };
 
-  const handlePlayPause = () => {
-    setState((prev) => (prev === 'playing' ? 'recorded' : 'playing'));
+  const handlePlayPause = async () => {
+    if (Platform.OS === 'web' || !recordedUriRef.current) {
+      setState((prev) => (prev === 'playing' ? 'recorded' : 'playing'));
+      return;
+    }
+    if (state === 'playing') {
+      await soundRef.current?.pauseAsync();
+      setState('recorded');
+    } else {
+      if (soundRef.current) {
+        await soundRef.current.playAsync();
+      } else {
+        const { sound } = await Audio.Sound.createAsync({ uri: recordedUriRef.current });
+        soundRef.current = sound;
+        sound.setOnPlaybackStatusUpdate((status) => {
+          if (status.isLoaded && status.didJustFinish) setState('recorded');
+        });
+        await sound.playAsync();
+      }
+      setState('playing');
+    }
   };
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (disabled) return;
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ['audio/*'],
+      copyToCacheDirectory: true,
+    });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 });
+    const audio: SelectedAudio = { name: asset.name, base64, mimeType: asset.mimeType || 'audio/mpeg' };
+    setUploadedAudio(audio);
+    onRecordingChange?.(true, '--:--', audio);
   };
 
   const handleRemoveUpload = () => {
-    setUploadedFile(null);
+    setUploadedAudio(null);
     onRecordingChange?.(false, '');
   };
 
@@ -170,9 +220,9 @@ export function AudioRecordCard({
   const hasRecording = state === 'recorded' || state === 'playing';
 
   return (
-    <View style={[styles.wrapper, { backgroundColor: colors.card, borderColor: isRecording ? accentColor : colors.border, borderWidth: isRecording ? 1.5 : 1, borderStyle: hasRecording || uploadedFile ? 'solid' : isRecording ? 'solid' : 'dashed' }]}>
+    <View style={[styles.wrapper, { backgroundColor: colors.card, borderColor: isRecording ? accentColor : colors.border, borderWidth: isRecording ? 1.5 : 1, borderStyle: hasRecording || uploadedAudio ? 'solid' : isRecording ? 'solid' : 'dashed' }]}>
 
-      {!hasRecording && !uploadedFile && (
+      {!hasRecording && !uploadedAudio && (
         <View style={styles.modeTabs}>
           <TouchableOpacity
             style={[styles.modeTab, mode === 'record' && { backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.07)' }]}
@@ -202,24 +252,12 @@ export function AudioRecordCard({
           <View style={styles.recordingContent}>
             <View style={styles.waveRow}>
               {waveAnims.map((anim, i) => (
-                <Animated.View
-                  key={i}
-                  style={[styles.liveBar, { backgroundColor: accentColor, transform: [{ scaleY: anim }] }]}
-                />
+                <Animated.View key={i} style={[styles.liveBar, { backgroundColor: accentColor, transform: [{ scaleY: anim }] }]} />
               ))}
             </View>
-            <Text style={[styles.timerText, { color: colors.text }]}>
-              {formatTime(elapsed)}
-            </Text>
-            <Text style={[styles.recordingHint, { color: colors.textSecondary }]}>
-              Recording... tap to stop
-            </Text>
-            <TouchableOpacity
-              onPress={handleRecord}
-              disabled={disabled}
-              activeOpacity={0.7}
-              style={[styles.stopButton, { borderColor: accentColor }]}
-            >
+            <Text style={[styles.timerText, { color: colors.text }]}>{formatTime(elapsed)}</Text>
+            <Text style={[styles.recordingHint, { color: colors.textSecondary }]}>Recording... tap to stop</Text>
+            <TouchableOpacity onPress={handleRecord} disabled={disabled} activeOpacity={0.7} style={[styles.stopButton, { borderColor: accentColor }]}>
               <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
                 <Square size={22} color={accentColor} fill={accentColor} />
               </Animated.View>
@@ -227,12 +265,7 @@ export function AudioRecordCard({
           </View>
         ) : (
           <View style={styles.idleContent}>
-            <TouchableOpacity
-              onPress={handleRecord}
-              disabled={disabled}
-              activeOpacity={0.7}
-              style={[styles.actionButton, { backgroundColor: accentColor }]}
-            >
+            <TouchableOpacity onPress={handleRecord} disabled={disabled} activeOpacity={0.7} style={[styles.actionButton, { backgroundColor: accentColor }]}>
               <Mic size={28} color={colors.background} strokeWidth={1.8} />
             </TouchableOpacity>
             <Text style={[styles.idleTitle, { color: colors.text }]}>{title}</Text>
@@ -241,43 +274,27 @@ export function AudioRecordCard({
         )
       )}
 
-      {mode === 'upload' && !uploadedFile && (
-        <TouchableOpacity
-          style={styles.idleContent}
-          onPress={handleUpload}
-          disabled={disabled}
-          activeOpacity={0.7}
-        >
+      {mode === 'upload' && !uploadedAudio && (
+        <TouchableOpacity style={styles.idleContent} onPress={handleUpload} disabled={disabled} activeOpacity={0.7}>
           <View style={[styles.actionButton, { backgroundColor: accentColor }]}>
             <Upload size={26} color={colors.background} strokeWidth={1.8} />
           </View>
           <Text style={[styles.idleTitle, { color: colors.text }]}>Upload Audio File</Text>
-          <Text style={[styles.idleDesc, { color: colors.textSecondary }]}>
-            MP3, M4A, WAV, AAC supported
-          </Text>
+          <Text style={[styles.idleDesc, { color: colors.textSecondary }]}>MP3, M4A, WAV, AAC supported</Text>
         </TouchableOpacity>
       )}
 
-      {uploadedFile && (
+      {uploadedAudio && (
         <View style={styles.fileReadyContent}>
           <View style={[styles.fileIconBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }]}>
             <Music size={22} color={accentColor} strokeWidth={1.8} />
-            <Text style={[styles.fileExtBadge, { color: accentColor }]}>{getFileExt(uploadedFile)}</Text>
+            <Text style={[styles.fileExtBadge, { color: accentColor }]}>{getFileExt(uploadedAudio.name)}</Text>
           </View>
           <View style={styles.fileInfoCol}>
-            <Text style={[styles.recordingLabel, { color: colors.text }]} numberOfLines={1}>
-              {uploadedFile}
-            </Text>
-            <Text style={[styles.durationText, { color: colors.textSecondary }]}>
-              Ready to process
-            </Text>
+            <Text style={[styles.recordingLabel, { color: colors.text }]} numberOfLines={1}>{uploadedAudio.name}</Text>
+            <Text style={[styles.durationText, { color: colors.textSecondary }]}>Ready to process</Text>
           </View>
-          <TouchableOpacity
-            onPress={handleRemoveUpload}
-            disabled={disabled}
-            activeOpacity={0.7}
-            style={styles.discardButton}
-          >
+          <TouchableOpacity onPress={handleRemoveUpload} disabled={disabled} activeOpacity={0.7} style={styles.discardButton}>
             <Trash2 size={18} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
@@ -286,12 +303,7 @@ export function AudioRecordCard({
       {hasRecording && (
         <View style={styles.recordedWrapper}>
           <View style={styles.playbackRow}>
-            <TouchableOpacity
-              onPress={handlePlayPause}
-              disabled={disabled}
-              activeOpacity={0.7}
-              style={[styles.playButton, { backgroundColor: accentColor }]}
-            >
+            <TouchableOpacity onPress={handlePlayPause} disabled={disabled} activeOpacity={0.7} style={[styles.playButton, { backgroundColor: accentColor }]}>
               {state === 'playing' ? (
                 <Pause size={18} color={colors.background} fill={colors.background} />
               ) : (
@@ -300,28 +312,16 @@ export function AudioRecordCard({
             </TouchableOpacity>
             <View style={styles.playbackInfo}>
               <Text style={[styles.recordingLabel, { color: colors.text }]}>Recording ready</Text>
-              <Text style={[styles.durationText, { color: colors.textSecondary }]}>
-                {formatTime(elapsed)}
-              </Text>
+              <Text style={[styles.durationText, { color: colors.textSecondary }]}>{formatTime(elapsed)}</Text>
             </View>
-            <TouchableOpacity
-              onPress={handleDiscard}
-              disabled={disabled}
-              activeOpacity={0.7}
-              style={styles.discardButton}
-            >
+            <TouchableOpacity onPress={handleDiscard} disabled={disabled} activeOpacity={0.7} style={styles.discardButton}>
               <Trash2 size={18} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
           <View style={styles.waveformStatic}>
             {Array.from({ length: 28 }).map((_, i) => {
               const h = 4 + Math.abs(Math.sin(i * 0.8 + 1.2) * 20);
-              return (
-                <View
-                  key={i}
-                  style={[styles.waveBar, { height: h, backgroundColor: i < 14 ? accentColor : isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }]}
-                />
-              );
+              return <View key={i} style={[styles.waveBar, { height: h, backgroundColor: i < 14 ? accentColor : isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)' }]} />;
             })}
           </View>
         </View>
@@ -331,155 +331,31 @@ export function AudioRecordCard({
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    borderRadius: 20,
-    marginBottom: 24,
-    overflow: 'hidden',
-  },
-  modeTabs: {
-    flexDirection: 'row',
-    margin: 8,
-    padding: 3,
-    borderRadius: 14,
-    backgroundColor: 'transparent',
-    gap: 2,
-  },
-  modeTab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 7,
-    borderRadius: 11,
-  },
-  modeTabText: {
-    fontSize: 13,
-  },
-  idleContent: {
-    alignItems: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-    gap: 10,
-  },
-  actionButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  idleTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  idleDesc: {
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  recordingContent: {
-    alignItems: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-    gap: 8,
-    width: '100%',
-  },
-  waveRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    height: 40,
-    marginBottom: 4,
-  },
-  liveBar: {
-    width: 4,
-    height: 32,
-    borderRadius: 2,
-  },
-  timerText: {
-    fontSize: 28,
-    fontWeight: '300',
-    letterSpacing: 2,
-    fontVariant: ['tabular-nums'],
-  },
-  recordingHint: {
-    fontSize: 13,
-  },
-  stopButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  fileReadyContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    gap: 12,
-  },
-  fileIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-  },
-  fileExtBadge: {
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  fileInfoCol: {
-    flex: 1,
-  },
-  recordedWrapper: {
-    padding: 16,
-  },
-  playbackRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    width: '100%',
-    marginBottom: 12,
-  },
-  playButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  playbackInfo: {
-    flex: 1,
-  },
-  recordingLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  durationText: {
-    fontSize: 13,
-    marginTop: 2,
-  },
-  discardButton: {
-    padding: 8,
-  },
-  waveformStatic: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    height: 28,
-    width: '100%',
-    paddingHorizontal: 4,
-  },
-  waveBar: {
-    flex: 1,
-    borderRadius: 2,
-    minHeight: 3,
-  },
+  wrapper: { borderRadius: 20, marginBottom: 24, overflow: 'hidden' },
+  modeTabs: { flexDirection: 'row', margin: 8, padding: 3, borderRadius: 14, backgroundColor: 'transparent', gap: 2 },
+  modeTab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 7, borderRadius: 11 },
+  modeTabText: { fontSize: 13 },
+  idleContent: { alignItems: 'center', paddingVertical: 20, paddingHorizontal: 16, gap: 10 },
+  actionButton: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  idleTitle: { fontSize: 15, fontWeight: '600' },
+  idleDesc: { fontSize: 13, textAlign: 'center' },
+  recordingContent: { alignItems: 'center', paddingVertical: 20, paddingHorizontal: 16, gap: 8, width: '100%' },
+  waveRow: { flexDirection: 'row', alignItems: 'center', gap: 4, height: 40, marginBottom: 4 },
+  liveBar: { width: 4, height: 32, borderRadius: 2 },
+  timerText: { fontSize: 28, fontWeight: '300', letterSpacing: 2, fontVariant: ['tabular-nums'] },
+  recordingHint: { fontSize: 13 },
+  stopButton: { width: 56, height: 56, borderRadius: 28, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  fileReadyContent: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 16, gap: 12 },
+  fileIconBox: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', gap: 2 },
+  fileExtBadge: { fontSize: 9, fontWeight: '700', letterSpacing: 0.5 },
+  fileInfoCol: { flex: 1 },
+  recordedWrapper: { padding: 16 },
+  playbackRow: { flexDirection: 'row', alignItems: 'center', gap: 12, width: '100%', marginBottom: 12 },
+  playButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  playbackInfo: { flex: 1 },
+  recordingLabel: { fontSize: 15, fontWeight: '600' },
+  durationText: { fontSize: 13, marginTop: 2 },
+  discardButton: { padding: 8 },
+  waveformStatic: { flexDirection: 'row', alignItems: 'center', gap: 2, height: 28, width: '100%', paddingHorizontal: 4 },
+  waveBar: { flex: 1, borderRadius: 2, minHeight: 3 },
 });

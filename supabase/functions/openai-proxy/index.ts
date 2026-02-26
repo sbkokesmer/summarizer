@@ -56,14 +56,26 @@ Deno.serve(async (req: Request) => {
       ? `Use a ${tone} tone in your response.`
       : "Use a clear, professional tone.";
 
+    const outputLanguage = targetLanguage || "English";
+
     let systemPrompt = "";
 
     if (action === "summarize") {
-      systemPrompt = `You are an expert summarizer. ${toneInstruction} Return your response in markdown format with a TL;DR section and Key Takeaways section.`;
+      systemPrompt = `You are an expert summarizer. ${toneInstruction}
+CRITICAL LANGUAGE RULE: You MUST write your ENTIRE response in ${outputLanguage} only. Do NOT use any other language anywhere in your response — not in section headings, not in the content, not in any part of the output.
+Return your response in markdown format with a TL;DR section and Key Takeaways section, both written entirely in ${outputLanguage}.`;
     } else if (action === "translate") {
-      systemPrompt = `You are an expert translator. ${toneInstruction} Translate the given content accurately while preserving meaning and context. Return your response in markdown format with a Translation section.`;
+      systemPrompt = `You are an expert translator. ${toneInstruction}
+CRITICAL LANGUAGE RULE: You MUST translate the ENTIRE content into ${outputLanguage}. Output ONLY the translated text in ${outputLanguage}. Do NOT include the original text. Do NOT include any summary, introduction, or explanation — only the translation itself in ${outputLanguage}.
+Return your response in markdown format with a Translation section containing only the ${outputLanguage} translation.`;
     } else if (action === "summarize_translate") {
-      systemPrompt = `You are an expert summarizer and translator. ${toneInstruction} First summarize the content, then translate the summary. Return your response in markdown with a TL;DR section, Key Takeaways section, and a Translation section.`;
+      systemPrompt = `You are an expert summarizer and translator. ${toneInstruction}
+CRITICAL LANGUAGE RULE: You MUST write your ENTIRE response in ${outputLanguage} only. Do NOT use any other language anywhere in your response.
+First summarize the content, then provide the translation. Return your response in markdown with:
+- A TL;DR section (in ${outputLanguage})
+- A Key Takeaways section (in ${outputLanguage})
+- A Translation section (in ${outputLanguage})
+All sections must be written entirely in ${outputLanguage}.`;
     } else {
       return new Response(
         JSON.stringify({ error: "Invalid action" }),
@@ -73,10 +85,10 @@ Deno.serve(async (req: Request) => {
 
     const actionVerb =
       action === "summarize"
-        ? "Summarize"
+        ? `Summarize the following content. Write your entire response in ${outputLanguage}`
         : action === "translate"
-        ? `Translate to ${targetLanguage || "English"}`
-        : `Summarize and translate to ${targetLanguage || "English"}`;
+        ? `Translate the following content to ${outputLanguage}. Output only the ${outputLanguage} translation`
+        : `Summarize and translate the following content to ${outputLanguage}. Write your entire response in ${outputLanguage}`;
 
     type OpenAIMessage = { role: string; content: string | unknown[] };
     let messages: OpenAIMessage[] = [];

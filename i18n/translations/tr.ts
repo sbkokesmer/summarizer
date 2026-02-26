@@ -27,7 +27,12 @@ export default {
     title: "Geçmiş",
     search_placeholder: "Geçmiş belgelerde ara...",
     no_results: "Sonuç bulunamadı",
-    no_results_desc: "Arama sorgunuzu değiştirmeyi deneyin."
+    no_results_desc: "Arama sorgunuzu değiştirmeyi deneyin.",
+    empty_title: "Henüz geçmiş yok",
+    empty_desc: "Özetlediğiniz ve çevirdiğiniz içerikler burada görünecek.",
+    clear_title: "Geçmişi Temizle",
+    clear_desc: "Tüm geçmiş kayıtları kalıcı olarak silinecek.",
+    clear_confirm: "Tümünü Temizle"
   },
   settings: {
     title: "Ayarlar",

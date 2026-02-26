@@ -27,7 +27,12 @@ export default {
     title: "History",
     search_placeholder: "Search past documents...",
     no_results: "No results found",
-    no_results_desc: "Try adjusting your search query."
+    no_results_desc: "Try adjusting your search query.",
+    empty_title: "No history yet",
+    empty_desc: "Your summarized and translated content will appear here.",
+    clear_title: "Clear History",
+    clear_desc: "This will permanently delete all history items.",
+    clear_confirm: "Clear All"
   },
   settings: {
     title: "Settings",

@@ -22,6 +22,7 @@ import { LanguageSelectionSheet, LANGUAGES } from '@/components/LanguageSelectio
 import { SummaryStyleSheet, SUMMARY_STYLES } from '@/components/SummaryStyleSheet';
 import { PrivacyBadge } from '@/components/PrivacyBadge';
 import { callOpenAI } from '@/services/openai';
+import { saveHistoryItem, InputType } from '@/services/historyStore';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -147,6 +148,25 @@ export default function SummarizeScreen() {
       }
 
       const response = await callOpenAI(params);
+
+      const inputTypeMap: InputType[] = ['text', 'file', 'url', 'audio', 'camera'];
+      let title = '';
+      if (inputTypeIndex === 0) title = text.trim().slice(0, 60) || 'Text input';
+      else if (inputTypeIndex === 1) title = selectedFile?.name || 'File';
+      else if (inputTypeIndex === 2) title = url.trim().slice(0, 60) || 'URL';
+      else if (inputTypeIndex === 3) title = audioData?.name || 'Audio recording';
+      else if (inputTypeIndex === 4) title = 'Camera scan';
+
+      const actionLabel = isTranslating
+        ? `Summarized & Translated (${selectedLang.label})`
+        : `Summarized · ${selectedTone.label}`;
+
+      saveHistoryItem({
+        inputType: inputTypeMap[inputTypeIndex],
+        title,
+        result: response,
+        action: actionLabel,
+      });
 
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setResult(response);

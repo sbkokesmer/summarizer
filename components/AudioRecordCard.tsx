@@ -168,6 +168,7 @@ export function AudioRecordCard({
       await soundRef.current?.pauseAsync();
       setState('recorded');
     } else {
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true });
       if (soundRef.current) {
         await soundRef.current.playAsync();
       } else {

@@ -287,7 +287,7 @@ export function AudioRecordCard({
   const handleUpload = async () => {
     if (disabled) return;
     const result = await DocumentPicker.getDocumentAsync({
-      type: ['audio/*'],
+      type: ['audio/*', 'video/*'],
       copyToCacheDirectory: true,
     });
     if (result.canceled) return;
@@ -382,7 +382,7 @@ export function AudioRecordCard({
             <Upload size={26} color={colors.background} strokeWidth={1.8} />
           </View>
           <Text style={[styles.idleTitle, { color: colors.text }]}>Upload Audio File</Text>
-          <Text style={[styles.idleDesc, { color: colors.textSecondary }]}>MP3, M4A, WAV, AAC supported</Text>
+          <Text style={[styles.idleDesc, { color: colors.textSecondary }]}>MP3, M4A, WAV, AAC, MP4 supported</Text>
         </TouchableOpacity>
       )}
 

@@ -105,9 +105,13 @@ All sections must be written entirely in ${outputLanguage}.`;
       ];
     } else if (audioBase64) {
       const audioBytes = Uint8Array.from(atob(audioBase64), (c) => c.charCodeAt(0));
-      const audioBlob = new Blob([audioBytes], { type: audioMimeType || "audio/m4a" });
+      const isVideo = (audioMimeType || "").startsWith("video/");
+      const effectiveMime = isVideo ? "video/mp4" : (audioMimeType || "audio/m4a");
+      const effectiveExt = isVideo ? "mp4" : (fileName?.split(".").pop() || "m4a");
+      const effectiveFileName = isVideo ? `audio.mp4` : (fileName || `audio.${effectiveExt}`);
+      const audioBlob = new Blob([audioBytes], { type: effectiveMime });
       const form = new FormData();
-      form.append("file", audioBlob, fileName || "audio.m4a");
+      form.append("file", audioBlob, effectiveFileName);
       form.append("model", "whisper-1");
 
       const transcribeRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {

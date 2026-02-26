@@ -17,6 +17,7 @@ import { FadeInView } from '@/components/FadeInView';
 import { LanguageSelectionSheet, LANGUAGES } from '@/components/LanguageSelectionSheet';
 import { ToneSelectionSheet, TONES } from '@/components/ToneSelectionSheet';
 import { PrivacyBadge } from '@/components/PrivacyBadge';
+import { callOpenAI } from '@/services/openai';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -39,6 +40,7 @@ export default function TranslateScreen() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   // Language & Tone State
   const [targetLangId, setTargetLangId] = useState('en');
@@ -76,7 +78,7 @@ export default function TranslateScreen() {
     return hasInput;
   };
 
-  const executeAction = (actionType: 'translate' | 'both') => {
+  const executeAction = async (actionType: 'translate' | 'both') => {
     if (!checkInput()) {
       Alert.alert('Missing Input', 'Please provide content to process.');
       return;
@@ -84,29 +86,37 @@ export default function TranslateScreen() {
 
     setPendingAction(actionType);
     setIsLoading(true);
-    
+    setError(null);
+
     if (result) {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setResult('');
     }
-    
-    setTimeout(() => {
+
+    try {
+      const inputText = inputTypeIndex === 0 ? text : inputTypeIndex === 2 ? url : selectedFile || '';
+      const action = actionType === 'both' ? 'summarize_translate' : 'translate';
+
+      const response = await callOpenAI({
+        action,
+        text: inputText,
+        targetLanguage: selectedLang.label,
+        tone: toneId,
+      });
+
+      let finalResult = response;
+      if (keepOriginal) {
+        finalResult += `\n\n### Original Text\n${inputText}`;
+      }
+
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setResult(finalResult);
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong');
+    } finally {
       setIsLoading(false);
       setPendingAction(null);
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      
-      let simulatedResult = `### Translation (${selectedLang.label})\nEste es un resultado de traducción simulado para su entrada. El tono aplicado es **${selectedTone.label}**.\n\n- **Precisión:** Alta\n- **Contexto:** Mantenido`;
-      
-      if (actionType === 'both') {
-        simulatedResult = `### TL;DR Summary\nEl diseño mantiene un enfoque minimalista y profesional.\n\n` + simulatedResult;
-      }
-
-      if (keepOriginal) {
-        simulatedResult += `\n\n### Original Text\nThis is a simulated translation result for your input. The applied tone is ${selectedTone.label}.`;
-      }
-
-      setResult(simulatedResult);
-    }, 1500);
+    }
   };
 
   const gradientColors = isDark ? ['#1C1C1E', '#000000'] : ['#F2F2F7', '#FFFFFF'];
@@ -231,6 +241,12 @@ export default function TranslateScreen() {
             
             <PrivacyBadge />
 
+            {error ? (
+              <View style={[styles.errorBox, { backgroundColor: colors.card, borderColor: '#FF3B30' }]}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
+
             {result ? (
               <FadeInView style={styles.resultSection}>
                 <View style={[styles.divider, { backgroundColor: colors.separator }]} />
@@ -317,5 +333,16 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     width: '100%',
     marginBottom: 24,
+  },
+  errorBox: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 12,
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 14,
+    lineHeight: 20,
   },
 });

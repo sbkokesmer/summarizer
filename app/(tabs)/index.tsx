@@ -19,6 +19,7 @@ import { EmptyStateCard } from '@/components/EmptyStateCard';
 import { LanguageSelectionSheet, LANGUAGES } from '@/components/LanguageSelectionSheet';
 import { ToneSelectionSheet, TONES } from '@/components/ToneSelectionSheet';
 import { PrivacyBadge } from '@/components/PrivacyBadge';
+import { callOpenAI } from '@/services/openai';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -42,6 +43,7 @@ export default function SummarizeScreen() {
   
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   // Language & Tone State
   const [targetLangId, setTargetLangId] = useState('auto');
@@ -91,31 +93,38 @@ export default function SummarizeScreen() {
     return hasInput;
   };
 
-  const executeAction = () => {
+  const executeAction = async () => {
     if (!checkInput()) {
       Alert.alert(t('summarize.missing_input'), t('summarize.missing_input_desc'));
       return;
     }
 
     setIsLoading(true);
-    
+    setError(null);
+
     if (result) {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setResult('');
     }
-    
-    setTimeout(() => {
-      setIsLoading(false);
+
+    try {
+      const inputText = inputTypeIndex === 0 ? text : inputTypeIndex === 2 ? url : selectedFile || '';
+      const action = isTranslating ? 'summarize_translate' : 'summarize';
+
+      const response = await callOpenAI({
+        action,
+        text: inputText,
+        targetLanguage: isTranslating ? selectedLang.label : undefined,
+        tone: toneId,
+      });
+
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      
-      let simulatedResult = `### TL;DR\nThis document outlines the Q4 roadmap, focusing on UI polish, performance, and new translation features.\n\n### Key Takeaways\n- **UI Polish:** The design team will finalize the new component library.\n- **Performance:** Target is to reduce app load time by **30%**.\n- **Translation:** Integration of the new language models.\n\n*Tone applied: ${selectedTone.label}*`;
-      
-      if (isTranslating) {
-        simulatedResult = `### TL;DR (Resumen)\nEste documento describe la hoja de ruta del cuarto trimestre, centrándose en el pulido de la interfaz de usuario, el rendimiento y las nuevas funciones de traducción.\n\n### Puntos Clave\n- **Interfaz:** El equipo de diseño finalizará la nueva biblioteca.\n- **Rendimiento:** El objetivo es reducir el tiempo de carga en un **30%**.\n- **Traducción:** Integración de los nuevos modelos de lenguaje.\n\n*Tono aplicado: ${selectedTone.label}*`;
-      }
-      
-      setResult(simulatedResult);
-    }, 1500);
+      setResult(response);
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const gradientColors = isDark ? ['#1C1C1E', '#000000'] : ['#F2F2F7', '#FFFFFF'];
@@ -231,7 +240,13 @@ export default function SummarizeScreen() {
             
             <PrivacyBadge title={t('components.privacy_title')} description={t('components.privacy_desc')} />
 
-            {!result && !isLoading ? (
+            {error ? (
+              <View style={[styles.errorBox, { backgroundColor: colors.card, borderColor: '#FF3B30' }]}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
+
+            {!result && !isLoading && !error ? (
               <FadeInView>
                 <EmptyStateCard title={t('components.empty_title')} description={t('components.empty_desc')} />
               </FadeInView>
@@ -313,5 +328,16 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     width: '100%',
     marginBottom: 24,
+  },
+  errorBox: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 12,
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 14,
+    lineHeight: 20,
   },
 });

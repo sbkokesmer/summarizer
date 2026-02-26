@@ -18,6 +18,7 @@ interface RequestBody {
   url?: string;
   targetLanguage?: string;
   tone?: string;
+  customFocus?: string;
 }
 
 async function fetchUrlContent(url: string): Promise<string> {
@@ -50,7 +51,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const body: RequestBody = await req.json();
-    const { action, text, fileBase64, fileMimeType, fileName, imageBase64, audioBase64, audioMimeType, url, targetLanguage, tone } = body;
+    const { action, text, fileBase64, fileMimeType, fileName, imageBase64, audioBase64, audioMimeType, url, targetLanguage, tone, customFocus } = body;
 
     const styleInstructions: Record<string, string> = {
       standard: `Structure your response with a "# TL;DR" section (2-3 sentences) followed by a "## Key Takeaways" section (4-6 bullet points).`,
@@ -60,19 +61,22 @@ Deno.serve(async (req: Request) => {
       curt: `Write exactly 3 sentences maximum. Be blunt, direct, and skip all pleasantries. No headings, no bullets.`,
     };
     const toneInstruction = styleInstructions[tone] || styleInstructions["standard"];
+    const focusInstruction = customFocus?.trim()
+      ? `\nCRITICAL FOCUS: The user has a specific focus request — "${customFocus.trim()}". Your entire response MUST be shaped around this. Ignore anything in the content that is not relevant to this focus.`
+      : "";
 
     const outputLanguage = targetLanguage || "English";
 
     let systemPrompt = "";
 
     if (action === "summarize") {
-      systemPrompt = `You are an expert summarizer. ${toneInstruction}
+      systemPrompt = `You are an expert summarizer. ${toneInstruction}${focusInstruction}
 CRITICAL LANGUAGE RULE: You MUST write your ENTIRE response in ${outputLanguage} only. Do NOT use any other language anywhere in your response — not in section headings, not in the content, not in any part of the output.`;
     } else if (action === "translate") {
-      systemPrompt = `You are an expert translator.
+      systemPrompt = `You are an expert translator.${focusInstruction}
 CRITICAL RULE: Output ONLY the translated text in ${outputLanguage}. Do NOT add any headings, section titles, markdown formatting, labels, introductions, or explanations. Do NOT include the original text. Just the raw translation itself, nothing else.`;
     } else if (action === "summarize_translate") {
-      systemPrompt = `You are an expert summarizer and translator. ${toneInstruction}
+      systemPrompt = `You are an expert summarizer and translator. ${toneInstruction}${focusInstruction}
 CRITICAL LANGUAGE RULE: You MUST write your ENTIRE response in ${outputLanguage} only. Do NOT use any other language anywhere in your response.
 After applying the summary style above, also include a "## Translation" section with the full translated text in ${outputLanguage}.`;
     } else {

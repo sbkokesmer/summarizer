@@ -24,6 +24,7 @@ Deno.serve(async (req: Request) => {
     const action = formData.get("action") as string;
     const targetLanguage = (formData.get("targetLanguage") as string) || "English";
     const tone = (formData.get("tone") as string) || "standard";
+    const customFocus = (formData.get("customFocus") as string) || "";
     const file = formData.get("file") as File | null;
 
     if (!file) {
@@ -48,6 +49,9 @@ Deno.serve(async (req: Request) => {
       curt: `Write exactly 3 sentences maximum. Be blunt, direct, and skip all pleasantries. No headings, no bullets.`,
     };
     const toneInstruction = styleInstructions[tone] || styleInstructions["standard"];
+    const focusInstruction = customFocus?.trim()
+      ? `\nCRITICAL FOCUS: The user has a specific focus request — "${customFocus.trim()}". Your entire response MUST be shaped around this. Ignore anything in the content that is not relevant to this focus.`
+      : "";
 
     let extractedText = "";
     const mimeType = file.type || "";
@@ -79,15 +83,15 @@ Deno.serve(async (req: Request) => {
       let userPrompt = "";
 
       if (action === "summarize") {
-        systemPrompt = `You are an expert summarizer. ${toneInst}
+        systemPrompt = `You are an expert summarizer. ${toneInst}${focusInstruction}
 CRITICAL LANGUAGE RULE: Write your ENTIRE response in ${lang} only.`;
         userPrompt = `Summarize the content of this PDF document. Write your entire response in ${lang}.`;
       } else if (action === "translate") {
-        systemPrompt = `You are an expert translator.
+        systemPrompt = `You are an expert translator.${focusInstruction}
 CRITICAL RULE: Output ONLY the translated text in ${lang}. No headings, no labels, no markdown formatting. Just the raw translation.`;
         userPrompt = `Translate all text content from this PDF to ${lang}. Output only the translation.`;
       } else {
-        systemPrompt = `You are an expert summarizer and translator. ${toneInst}
+        systemPrompt = `You are an expert summarizer and translator. ${toneInst}${focusInstruction}
 CRITICAL LANGUAGE RULE: Write your ENTIRE response in ${lang} only.
 After applying the summary style above, also include a "## Translation" section with the full translated text in ${lang}.`;
         userPrompt = `Summarize and translate the content of this PDF to ${lang}. Write your entire response in ${lang}.`;
@@ -157,15 +161,15 @@ After applying the summary style above, also include a "## Translation" section 
     let actionVerb = "";
 
     if (action === "summarize") {
-      systemPrompt = `You are an expert summarizer. ${toneInstruction}
+      systemPrompt = `You are an expert summarizer. ${toneInstruction}${focusInstruction}
 CRITICAL LANGUAGE RULE: Write your ENTIRE response in ${targetLanguage} only.`;
       actionVerb = `Summarize the following document content. Write your entire response in ${targetLanguage}`;
     } else if (action === "translate") {
-      systemPrompt = `You are an expert translator.
+      systemPrompt = `You are an expert translator.${focusInstruction}
 CRITICAL RULE: Output ONLY the translated text in ${targetLanguage}. No headings, labels, or formatting. Just the raw translation.`;
       actionVerb = `Translate the following document content to ${targetLanguage}. Output only the translation`;
     } else {
-      systemPrompt = `You are an expert summarizer and translator. ${toneInstruction}
+      systemPrompt = `You are an expert summarizer and translator. ${toneInstruction}${focusInstruction}
 CRITICAL LANGUAGE RULE: Write your ENTIRE response in ${targetLanguage} only.
 After applying the summary style above, also include a "## Translation" section with the full translated text in ${targetLanguage}.`;
       actionVerb = `Summarize and translate the following document content to ${targetLanguage}. Write your entire response in ${targetLanguage}`;

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,9 +8,12 @@ import {
   Pressable,
   Platform,
   ScrollView,
+  TextInput,
+  Animated,
+  Keyboard,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { Check } from 'lucide-react-native';
+import { Check, Wand2 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export const SUMMARY_STYLES = [
@@ -51,20 +54,49 @@ interface Props {
   onClose: () => void;
   onSelect: (styleId: string) => void;
   selectedId: string;
+  customFocus: string;
+  onCustomFocusChange: (text: string) => void;
 }
 
-export function SummaryStyleSheet({ visible, onClose, onSelect, selectedId }: Props) {
+export function SummaryStyleSheet({ visible, onClose, onSelect, selectedId, customFocus, onCustomFocusChange }: Props) {
   const insets = useSafeAreaInsets();
+  const focusAnim = useRef(new Animated.Value(customFocus.length > 0 ? 1 : 0)).current;
+  const [focusExpanded, setFocusExpanded] = React.useState(customFocus.length > 0);
+  const inputRef = useRef<TextInput>(null);
 
   const handleSelect = (id: string) => {
     onSelect(id);
-    onClose();
   };
+
+  const toggleFocus = () => {
+    if (focusExpanded) {
+      Keyboard.dismiss();
+      onCustomFocusChange('');
+      Animated.timing(focusAnim, { toValue: 0, duration: 220, useNativeDriver: false }).start(() => {
+        setFocusExpanded(false);
+      });
+    } else {
+      setFocusExpanded(true);
+      Animated.timing(focusAnim, { toValue: 1, duration: 260, useNativeDriver: false }).start(() => {
+        inputRef.current?.focus();
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (customFocus.length > 0 && !focusExpanded) {
+      setFocusExpanded(true);
+      focusAnim.setValue(1);
+    }
+  }, []);
+
+  const inputHeight = focusAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 90] });
+  const inputOpacity = focusAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <Pressable style={styles.backdrop} onPress={onClose} />
+        <Pressable style={styles.backdrop} onPress={() => { Keyboard.dismiss(); onClose(); }} />
 
         <BlurView
           intensity={Platform.OS === 'ios' ? 80 : 100}
@@ -80,6 +112,7 @@ export function SummaryStyleSheet({ visible, onClose, onSelect, selectedId }: Pr
           <ScrollView
             style={styles.scrollContainer}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ paddingBottom: 20 }}
           >
             <View style={styles.listContainer}>
@@ -108,6 +141,46 @@ export function SummaryStyleSheet({ visible, onClose, onSelect, selectedId }: Pr
                 );
               })}
             </View>
+
+            <TouchableOpacity
+              style={[styles.customFocusToggle, focusExpanded && styles.customFocusToggleActive]}
+              onPress={toggleFocus}
+              activeOpacity={0.7}
+            >
+              <Wand2 size={16} color={focusExpanded ? '#FFFFFF' : 'rgba(255,255,255,0.6)'} strokeWidth={2} />
+              <Text style={[styles.customFocusToggleLabel, focusExpanded && styles.customFocusToggleLabelActive]}>
+                {focusExpanded ? 'Remove Custom Focus' : 'Add Custom Focus'}
+              </Text>
+              {customFocus.length > 0 && !focusExpanded && (
+                <View style={styles.dot} />
+              )}
+            </TouchableOpacity>
+
+            <Animated.View style={[styles.customFocusContainer, { height: inputHeight, opacity: inputOpacity, overflow: 'hidden' }]}>
+              <View style={styles.customFocusInner}>
+                <TextInput
+                  ref={inputRef}
+                  style={styles.customFocusInput}
+                  value={customFocus}
+                  onChangeText={onCustomFocusChange}
+                  placeholder="e.g. Only extract the reasons lawsuits were filed"
+                  placeholderTextColor="rgba(255,255,255,0.3)"
+                  multiline
+                  maxLength={200}
+                  returnKeyType="done"
+                  onSubmitEditing={Keyboard.dismiss}
+                />
+                <Text style={styles.charCount}>{customFocus.length}/200</Text>
+              </View>
+            </Animated.View>
+
+            <TouchableOpacity
+              style={styles.doneButton}
+              onPress={() => { Keyboard.dismiss(); onClose(); }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.doneButtonLabel}>Done</Text>
+            </TouchableOpacity>
           </ScrollView>
         </BlurView>
       </View>
@@ -129,7 +202,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     paddingHorizontal: 20,
     paddingTop: 12,
-    maxHeight: '80%',
+    maxHeight: '85%',
     backgroundColor: Platform.OS === 'android' ? 'rgba(28,28,30,0.95)' : 'transparent',
   },
   handleContainer: {
@@ -156,6 +229,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderRadius: 16,
     overflow: 'hidden',
+    marginBottom: 12,
   },
   row: {
     flexDirection: 'row',
@@ -192,5 +266,75 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: 'rgba(255,255,255,0.1)',
     marginLeft: 58,
+  },
+  customFocusToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    borderStyle: 'dashed',
+    marginBottom: 10,
+  },
+  customFocusToggleActive: {
+    borderColor: 'rgba(255,255,255,0.4)',
+    borderStyle: 'solid',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  customFocusToggleLabel: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.6)',
+    fontWeight: '500',
+    flex: 1,
+  },
+  customFocusToggleLabelActive: {
+    color: 'rgba(255,255,255,0.9)',
+  },
+  dot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#34C759',
+  },
+  customFocusContainer: {
+    marginBottom: 12,
+  },
+  customFocusInner: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 8,
+    flex: 1,
+  },
+  customFocusInput: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    lineHeight: 20,
+    minHeight: 44,
+    textAlignVertical: 'top',
+  },
+  charCount: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.3)',
+    textAlign: 'right',
+    marginTop: 4,
+  },
+  doneButton: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  doneButtonLabel: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

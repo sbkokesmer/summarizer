@@ -62,6 +62,7 @@ export default function SummarizeScreen() {
 
   const [toneId, setToneId] = useState('standard');
   const [isToneSheetVisible, setIsToneSheetVisible] = useState(false);
+  const [customFocus, setCustomFocus] = useState('');
 
   const selectedLang = LANGUAGES.find(l => l.id === targetLangId) || LANGUAGES[0];
   const selectedTone = SUMMARY_STYLES.find(s => s.id === toneId) || SUMMARY_STYLES[0];
@@ -123,7 +124,7 @@ export default function SummarizeScreen() {
       const action = 'summarize';
       const targetLanguage = isTranslating ? selectedLang.label : undefined;
 
-      let params: Parameters<typeof callOpenAI>[0] = { action, targetLanguage, tone: toneId };
+      let params: Parameters<typeof callOpenAI>[0] = { action, targetLanguage, tone: toneId, customFocus: customFocus.trim() || undefined };
 
       if (inputTypeIndex === 0) {
         params.text = text;
@@ -256,7 +257,10 @@ export default function SummarizeScreen() {
                   <Text style={[styles.configValue, { color: colors.text }]} numberOfLines={1}>
                     {selectedTone.icon} {selectedTone.label}
                   </Text>
-                  <ChevronDown size={16} color={colors.textSecondary} />
+                  <View style={styles.configValueRight}>
+                    {customFocus.trim().length > 0 && <View style={styles.focusDot} />}
+                    <ChevronDown size={16} color={colors.textSecondary} />
+                  </View>
                 </View>
               </TouchableOpacity>
             </View>
@@ -304,6 +308,8 @@ export default function SummarizeScreen() {
         onClose={() => setIsToneSheetVisible(false)}
         onSelect={setToneId}
         selectedId={toneId}
+        customFocus={customFocus}
+        onCustomFocusChange={setCustomFocus}
       />
     </View>
   );
@@ -321,6 +327,8 @@ const styles = StyleSheet.create({
   configLabel: { fontSize: 12, fontWeight: '500', textTransform: 'uppercase', letterSpacing: 0.5 },
   configValueRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   configValue: { fontSize: 15, fontWeight: '600', flex: 1 },
+  configValueRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  focusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#34C759' },
   resultSection: { marginTop: 24 },
   divider: { height: StyleSheet.hairlineWidth, width: '100%', marginBottom: 24 },
   errorBox: { borderWidth: 1, borderRadius: 12, padding: 14, marginTop: 12 },

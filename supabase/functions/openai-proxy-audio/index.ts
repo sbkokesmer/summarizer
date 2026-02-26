@@ -24,6 +24,7 @@ Deno.serve(async (req: Request) => {
     const action = formData.get("action") as string;
     const targetLanguage = (formData.get("targetLanguage") as string) || "English";
     const tone = (formData.get("tone") as string) || "standard";
+    const customFocus = (formData.get("customFocus") as string) || "";
     const audioFile = formData.get("audio") as File | null;
 
     if (!audioFile) {
@@ -69,20 +70,23 @@ Deno.serve(async (req: Request) => {
       curt: `Write exactly 3 sentences maximum. Be blunt, direct, and skip all pleasantries. No headings, no bullets.`,
     };
     const toneInstruction = styleInstructions[tone] || styleInstructions["standard"];
+    const focusInstruction = customFocus?.trim()
+      ? `\nCRITICAL FOCUS: The user has a specific focus request — "${customFocus.trim()}". Your entire response MUST be shaped around this. Ignore anything in the content that is not relevant to this focus.`
+      : "";
 
     let systemPrompt = "";
     let actionVerb = "";
 
     if (action === "summarize") {
-      systemPrompt = `You are an expert summarizer. ${toneInstruction}
+      systemPrompt = `You are an expert summarizer. ${toneInstruction}${focusInstruction}
 CRITICAL LANGUAGE RULE: You MUST write your ENTIRE response in ${targetLanguage} only.`;
       actionVerb = `Summarize the following transcribed audio content. Write your entire response in ${targetLanguage}`;
     } else if (action === "translate") {
-      systemPrompt = `You are an expert translator.
+      systemPrompt = `You are an expert translator.${focusInstruction}
 CRITICAL RULE: Output ONLY the translated text in ${targetLanguage}. Do NOT add any headings, section titles, markdown formatting, labels, introductions, or explanations. Just the raw translation itself, nothing else.`;
       actionVerb = `Translate the following transcribed audio to ${targetLanguage}. Output only the ${targetLanguage} translation`;
     } else {
-      systemPrompt = `You are an expert summarizer and translator. ${toneInstruction}
+      systemPrompt = `You are an expert summarizer and translator. ${toneInstruction}${focusInstruction}
 CRITICAL LANGUAGE RULE: You MUST write your ENTIRE response in ${targetLanguage} only.
 After applying the summary style above, also include a "## Translation" section with the full translated text in ${targetLanguage}.`;
       actionVerb = `Summarize and translate the following transcribed audio to ${targetLanguage}. Write your entire response in ${targetLanguage}`;

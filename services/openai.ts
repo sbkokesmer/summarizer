@@ -17,6 +17,7 @@ export interface OpenAIRequestParams {
   url?: string;
   targetLanguage?: string;
   tone?: string;
+  customFocus?: string;
 }
 
 export async function callOpenAI(params: OpenAIRequestParams): Promise<string> {
@@ -51,6 +52,7 @@ async function callOpenAIWithFile(params: OpenAIRequestParams): Promise<string> 
   form.append("action", params.action);
   if (params.targetLanguage) form.append("targetLanguage", params.targetLanguage);
   if (params.tone) form.append("tone", params.tone);
+  if (params.customFocus) form.append("customFocus", params.customFocus);
 
   if (params.fileBlob) {
     form.append("file", params.fileBlob, params.fileName || "document");
@@ -87,6 +89,7 @@ async function callOpenAIWithAudio(params: OpenAIRequestParams): Promise<string>
   form.append("action", params.action);
   if (params.targetLanguage) form.append("targetLanguage", params.targetLanguage);
   if (params.tone) form.append("tone", params.tone);
+  if (params.customFocus) form.append("customFocus", params.customFocus);
 
   if (params.audioBlob) {
     const ext = (params.fileName?.split(".").pop() || "mp3").toLowerCase();

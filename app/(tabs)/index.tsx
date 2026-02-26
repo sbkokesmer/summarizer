@@ -11,6 +11,8 @@ import { SegmentedControl } from '@/components/SegmentedControl';
 import { InputCard } from '@/components/InputCard';
 import { FileUploadCard } from '@/components/FileUploadCard';
 import { UrlInputCard } from '@/components/UrlInputCard';
+import { AudioRecordCard } from '@/components/AudioRecordCard';
+import { CameraScanCard } from '@/components/CameraScanCard';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { ResultCard } from '@/components/ResultCard';
 import { FadeInView } from '@/components/FadeInView';
@@ -31,24 +33,33 @@ export default function SummarizeScreen() {
   const isDark = colorScheme === 'dark';
   const colors = isDark ? Colors.dark : Colors.light;
   const insets = useSafeAreaInsets();
-  
+
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  const INPUT_TYPES = [t('summarize.text'), t('summarize.file'), t('summarize.url')];
+  const INPUT_TYPES = [
+    t('summarize.text'),
+    t('summarize.file'),
+    t('summarize.url'),
+    t('summarize.audio'),
+    t('summarize.camera'),
+  ];
 
   const [inputTypeIndex, setInputTypeIndex] = useState(0);
   const [text, setText] = useState('');
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [url, setUrl] = useState('');
-  
+  const [hasAudio, setHasAudio] = useState(false);
+  const [audioDuration, setAudioDuration] = useState('');
+  const [hasScan, setHasScan] = useState(false);
+  const [scanText, setScanText] = useState('');
+
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  // Language & Tone State
   const [targetLangId, setTargetLangId] = useState('auto');
   const [isLangSheetVisible, setIsLangSheetVisible] = useState(false);
-  
+
   const [toneId, setToneId] = useState('standard');
   const [isToneSheetVisible, setIsToneSheetVisible] = useState(false);
 
@@ -85,12 +96,34 @@ export default function SummarizeScreen() {
     }
   };
 
+  const handleAudioChange = (hasRecording: boolean, duration: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setHasAudio(hasRecording);
+    setAudioDuration(duration);
+  };
+
+  const handleScanChange = (hasResult: boolean, preview?: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setHasScan(hasResult);
+    setScanText(preview || '');
+  };
+
   const checkInput = () => {
-    let hasInput = false;
-    if (inputTypeIndex === 0 && text.trim()) hasInput = true;
-    if (inputTypeIndex === 1 && selectedFile) hasInput = true;
-    if (inputTypeIndex === 2 && url.trim()) hasInput = true;
-    return hasInput;
+    if (inputTypeIndex === 0 && text.trim()) return true;
+    if (inputTypeIndex === 1 && selectedFile) return true;
+    if (inputTypeIndex === 2 && url.trim()) return true;
+    if (inputTypeIndex === 3 && hasAudio) return true;
+    if (inputTypeIndex === 4 && hasScan) return true;
+    return false;
+  };
+
+  const getInputText = () => {
+    if (inputTypeIndex === 0) return text;
+    if (inputTypeIndex === 1) return selectedFile || '';
+    if (inputTypeIndex === 2) return url;
+    if (inputTypeIndex === 3) return `[Audio recording: ${audioDuration}]`;
+    if (inputTypeIndex === 4) return scanText;
+    return '';
   };
 
   const executeAction = async () => {
@@ -108,7 +141,7 @@ export default function SummarizeScreen() {
     }
 
     try {
-      const inputText = inputTypeIndex === 0 ? text : inputTypeIndex === 2 ? url : selectedFile || '';
+      const inputText = getInputText();
       const action = isTranslating ? 'summarize_translate' : 'summarize';
 
       const response = await callOpenAI({
@@ -127,24 +160,25 @@ export default function SummarizeScreen() {
     }
   };
 
+  const showSuggestions = inputTypeIndex <= 2;
   const gradientColors = isDark ? ['#1C1C1E', '#000000'] : ['#F2F2F7', '#FFFFFF'];
 
   return (
     <View style={styles.root}>
       <LinearGradient colors={gradientColors} style={StyleSheet.absoluteFill} />
-      <KeyboardAvoidingView 
-        style={styles.container} 
+      <KeyboardAvoidingView
+        style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <Animated.ScrollView 
-          style={styles.scrollView} 
+        <Animated.ScrollView
+          style={styles.scrollView}
           contentContainerStyle={[
             styles.content,
             {
               paddingTop: insets.top + 16,
               paddingBottom: insets.bottom + 140,
             }
-          ]} 
+          ]}
           showsVerticalScrollIndicator={false}
           onScroll={Animated.event(
             [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -152,25 +186,24 @@ export default function SummarizeScreen() {
           )}
           scrollEventThrottle={16}
         >
-          
           <AppIdentityBadge title={t('summarize.title')} />
-          
+
           <View style={styles.paddingHorizontal}>
-            <SegmentedControl 
+            <SegmentedControl
               options={INPUT_TYPES}
               selectedIndex={inputTypeIndex}
               onChange={handleInputTypeChange}
               disabled={isLoading}
             />
           </View>
-          
+
           <View style={styles.paddingHorizontal}>
             <FadeInView key={`input-${inputTypeIndex}`}>
               {inputTypeIndex === 0 && (
                 <InputCard value={text} onChangeText={setText} editable={!isLoading} placeholder={t('components.input_placeholder')} />
               )}
               {inputTypeIndex === 1 && (
-                <FileUploadCard 
+                <FileUploadCard
                   fileName={selectedFile}
                   onSelectFile={handleSimulateFileSelect}
                   onRemoveFile={handleRemoveFile}
@@ -182,20 +215,37 @@ export default function SummarizeScreen() {
               {inputTypeIndex === 2 && (
                 <UrlInputCard value={url} onChangeText={setUrl} disabled={isLoading} placeholder={t('components.url_placeholder')} />
               )}
+              {inputTypeIndex === 3 && (
+                <AudioRecordCard
+                  onRecordingChange={handleAudioChange}
+                  disabled={isLoading}
+                  title={t('components.audio_title')}
+                  description={t('components.audio_desc')}
+                />
+              )}
+              {inputTypeIndex === 4 && (
+                <CameraScanCard
+                  onScanChange={handleScanChange}
+                  disabled={isLoading}
+                  title={t('components.camera_title')}
+                  description={t('components.camera_desc')}
+                />
+              )}
             </FadeInView>
           </View>
 
-          <SuggestionChips 
-            onSelect={handleSuggestionSelect} 
-            disabled={isLoading} 
-            title={t('components.try_example')}
-            labels={[t('components.ex_meeting'), t('components.ex_report'), t('components.ex_article')]}
-          />
-          
+          {showSuggestions && (
+            <SuggestionChips
+              onSelect={handleSuggestionSelect}
+              disabled={isLoading}
+              title={t('components.try_example')}
+              labels={[t('components.ex_meeting'), t('components.ex_report'), t('components.ex_article')]}
+            />
+          )}
+
           <View style={styles.paddingHorizontal}>
-            
             <View style={styles.configGrid}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.configButton, { backgroundColor: colors.card, borderColor: colors.border }]}
                 onPress={() => setIsLangSheetVisible(true)}
                 disabled={isLoading}
@@ -213,7 +263,7 @@ export default function SummarizeScreen() {
                 </View>
               </TouchableOpacity>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.configButton, { backgroundColor: colors.card, borderColor: colors.border }]}
                 onPress={() => setIsToneSheetVisible(true)}
                 disabled={isLoading}
@@ -232,12 +282,12 @@ export default function SummarizeScreen() {
               </TouchableOpacity>
             </View>
 
-            <PrimaryButton 
-              title={isTranslating ? t('summarize.btn_summarize_translate') : t('summarize.btn_summarize')} 
+            <PrimaryButton
+              title={isTranslating ? t('summarize.btn_summarize_translate') : t('summarize.btn_summarize')}
               onPress={executeAction}
               isLoading={isLoading}
             />
-            
+
             <PrivacyBadge title={t('components.privacy_title')} description={t('components.privacy_desc')} />
 
             {error ? (
@@ -259,11 +309,10 @@ export default function SummarizeScreen() {
               </FadeInView>
             ) : null}
           </View>
-
         </Animated.ScrollView>
       </KeyboardAvoidingView>
 
-      <LanguageSelectionSheet 
+      <LanguageSelectionSheet
         visible={isLangSheetVisible}
         onClose={() => setIsLangSheetVisible(false)}
         onSelect={setTargetLangId}

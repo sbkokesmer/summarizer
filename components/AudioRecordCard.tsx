@@ -54,6 +54,7 @@ export function AudioRecordCard({
   const audioChunksRef = useRef<Blob[]>([]);
   const webAudioRef = useRef<HTMLAudioElement | null>(null);
   const webAudioBlobRef = useRef<Blob | null>(null);
+  const elapsedRef = useRef(0);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const waveAnims = useRef(Array.from({ length: 5 }, () => new Animated.Value(0.3))).current;
@@ -111,8 +112,12 @@ export function AudioRecordCard({
   };
 
   const startTimer = () => {
+    elapsedRef.current = 0;
     setElapsed(0);
-    timerRef.current = setInterval(() => setElapsed((p) => p + 1), 1000);
+    timerRef.current = setInterval(() => {
+      elapsedRef.current += 1;
+      setElapsed(elapsedRef.current);
+    }, 1000);
   };
 
   const stopTimer = () => {
@@ -182,7 +187,7 @@ export function AudioRecordCard({
             const ext = mimeType.includes('ogg') ? 'ogg' : 'webm';
             const audio: SelectedAudio = { name: `recording.${ext}`, base64, mimeType };
             setState('recorded');
-            onRecordingChange?.(true, formatTime(elapsed), audio);
+            onRecordingChange?.(true, formatTime(elapsedRef.current), audio);
           };
           reader.readAsDataURL(blob);
         };
@@ -254,11 +259,24 @@ export function AudioRecordCard({
         if (!webAudioRef.current) {
           const url = URL.createObjectURL(webAudioBlobRef.current);
           const audio = new window.Audio(url);
+          audio.onended = () => {
+            setState('recorded');
+          };
+          webAudioRef.current = audio;
+        } else {
+          webAudioRef.current.currentTime = 0;
+        }
+        try {
+          await webAudioRef.current.play();
+          setState('playing');
+        } catch {
+          const url = URL.createObjectURL(webAudioBlobRef.current);
+          const audio = new window.Audio(url);
           audio.onended = () => setState('recorded');
           webAudioRef.current = audio;
+          await webAudioRef.current.play();
+          setState('playing');
         }
-        await webAudioRef.current.play();
-        setState('playing');
       }
       return;
     }

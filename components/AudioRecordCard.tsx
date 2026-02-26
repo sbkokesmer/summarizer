@@ -292,7 +292,21 @@ export function AudioRecordCard({
     });
     if (result.canceled) return;
     const asset = result.assets[0];
-    const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 });
+
+    let base64: string;
+
+    if (Platform.OS === 'web') {
+      const response = await fetch(asset.uri);
+      const blob = await response.blob();
+      base64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+        reader.readAsDataURL(blob);
+      });
+    } else {
+      base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 });
+    }
+
     const audio: SelectedAudio = { name: asset.name, base64, mimeType: asset.mimeType || 'audio/mpeg' };
     setUploadedAudio(audio);
     onRecordingChange?.(true, '--:--', audio);

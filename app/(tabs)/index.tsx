@@ -214,14 +214,6 @@ export default function SummarizeScreen() {
             </FadeInView>
           </View>
 
-          {showSuggestions && (
-            <SuggestionChips
-              onSelect={handleSuggestionSelect}
-              disabled={isLoading}
-              title={t('components.try_example')}
-              labels={[t('components.ex_meeting'), t('components.ex_report'), t('components.ex_article')]}
-            />
-          )}
 
           <View style={styles.paddingHorizontal}>
             <View style={styles.configGrid}>

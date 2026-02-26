@@ -66,8 +66,7 @@ CRITICAL LANGUAGE RULE: You MUST write your ENTIRE response in ${outputLanguage}
 Return your response in markdown format with a TL;DR section and Key Takeaways section, both written entirely in ${outputLanguage}.`;
     } else if (action === "translate") {
       systemPrompt = `You are an expert translator. ${toneInstruction}
-CRITICAL LANGUAGE RULE: You MUST translate the ENTIRE content into ${outputLanguage}. Output ONLY the translated text in ${outputLanguage}. Do NOT include the original text. Do NOT include any summary, introduction, or explanation — only the translation itself in ${outputLanguage}.
-Return your response in markdown format with a Translation section containing only the ${outputLanguage} translation.`;
+CRITICAL RULE: Output ONLY the translated text in ${outputLanguage}. Do NOT add any headings, section titles, markdown formatting, labels, introductions, or explanations. Do NOT include the original text. Just the raw translation itself, nothing else.`;
     } else if (action === "summarize_translate") {
       systemPrompt = `You are an expert summarizer and translator. ${toneInstruction}
 CRITICAL LANGUAGE RULE: You MUST write your ENTIRE response in ${outputLanguage} only. Do NOT use any other language anywhere in your response.

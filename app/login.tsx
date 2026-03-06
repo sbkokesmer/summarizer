@@ -1,31 +1,33 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  KeyboardAvoidingView, 
-  Platform, 
-  LayoutAnimation, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  LayoutAnimation,
   UIManager,
-  TextInput
+  TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Mail, ChevronLeft, Check, Globe, ChevronDown, ShieldCheck } from 'lucide-react-native';
-import { FontAwesome5 } from '@expo/vector-icons'; // For Apple Logo
+import { FontAwesome5 } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { FadeInView } from '@/components/FadeInView';
 import { LanguageSelectionSheet, LANGUAGES } from '@/components/LanguageSelectionSheet';
+import { useAuth } from '@/context/AuthContext';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
 type Step = 'welcome' | 'email' | 'onboarding';
+type EmailMode = 'signin' | 'signup';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -33,15 +35,16 @@ export default function LoginScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const colors = isDark ? Colors.dark : Colors.light;
+  const { signInWithEmail, signUpWithEmail } = useAuth();
 
   const [step, setStep] = useState<Step>('welcome');
-  
-  // Form States
+  const [emailMode, setEmailMode] = useState<EmailMode>('signin');
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
-  // Onboarding States
   const [selectedLangId, setSelectedLangId] = useState<string | null>(null);
   const [isLangSheetVisible, setIsLangSheetVisible] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -50,33 +53,43 @@ export default function LoginScreen() {
 
   const changeStep = (newStep: Step) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setAuthError(null);
     setStep(newStep);
   };
 
   const handleAppleAuth = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      changeStep('onboarding');
-    }, 1000);
+    setAuthError('Apple Sign In requires a native build. Please use email to continue.');
   };
 
-  const handleEmailAuth = () => {
-    if (!email || !password) return;
+  const handleEmailAuth = async () => {
+    if (!email.trim() || !password.trim()) return;
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      changeStep('onboarding');
-    }, 1000);
+    setAuthError(null);
+
+    let result: { error: string | null };
+    if (emailMode === 'signin') {
+      result = await signInWithEmail(email.trim(), password);
+    } else {
+      if (password.length < 6) {
+        setAuthError('Password must be at least 6 characters.');
+        setIsLoading(false);
+        return;
+      }
+      result = await signUpWithEmail(email.trim(), password);
+    }
+
+    setIsLoading(false);
+
+    if (result.error) {
+      setAuthError(result.error);
+      return;
+    }
+
+    changeStep('onboarding');
   };
 
   const handleCompleteOnboarding = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      // In a real app, save language preference and auth token here
-      router.replace('/(tabs)');
-    }, 1000);
+    router.replace('/(tabs)');
   };
 
   const gradientColors = isDark ? ['#1C1C1E', '#000000'] : ['#F2F2F7', '#FFFFFF'];
@@ -84,17 +97,16 @@ export default function LoginScreen() {
   return (
     <View style={styles.root}>
       <LinearGradient colors={gradientColors} style={StyleSheet.absoluteFill} />
-      
-      <KeyboardAvoidingView 
-        style={styles.container} 
+
+      <KeyboardAvoidingView
+        style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {/* Header / Back Button */}
         <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
           {step !== 'welcome' && (
-            <TouchableOpacity 
-              style={styles.backButton} 
-              onPress={() => changeStep(step === 'email' ? 'welcome' : 'welcome')}
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => changeStep('welcome')}
             >
               <ChevronLeft size={24} color={colors.text} />
             </TouchableOpacity>
@@ -102,8 +114,7 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.content}>
-          
-          {/* STEP 1: WELCOME */}
+
           {step === 'welcome' && (
             <FadeInView style={styles.stepContainer}>
               <View style={styles.heroContainer}>
@@ -117,11 +128,9 @@ export default function LoginScreen() {
               </View>
 
               <View style={styles.actionContainer}>
-                {/* Apple Button */}
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.appleButton, { backgroundColor: isDark ? '#FFFFFF' : '#000000' }]}
                   onPress={handleAppleAuth}
-                  disabled={isLoading}
                   activeOpacity={0.8}
                 >
                   <FontAwesome5 name="apple" size={20} color={isDark ? '#000000' : '#FFFFFF'} />
@@ -130,11 +139,9 @@ export default function LoginScreen() {
                   </Text>
                 </TouchableOpacity>
 
-                {/* Email Button */}
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.emailButton, { backgroundColor: colors.card, borderColor: colors.border }]}
                   onPress={() => changeStep('email')}
-                  disabled={isLoading}
                   activeOpacity={0.8}
                 >
                   <Mail size={20} color={colors.text} />
@@ -142,6 +149,12 @@ export default function LoginScreen() {
                     Continue with Email
                   </Text>
                 </TouchableOpacity>
+
+                {authError && (
+                  <View style={[styles.errorBox, { backgroundColor: colors.card, borderColor: '#FF3B30' }]}>
+                    <Text style={styles.errorText}>{authError}</Text>
+                  </View>
+                )}
 
                 <View style={styles.privacyNote}>
                   <ShieldCheck size={14} color={colors.textSecondary} />
@@ -153,13 +166,16 @@ export default function LoginScreen() {
             </FadeInView>
           )}
 
-          {/* STEP 2: EMAIL AUTH */}
           {step === 'email' && (
             <FadeInView style={styles.stepContainer}>
               <View style={styles.heroContainer}>
-                <Text style={[styles.title, { color: colors.text, textAlign: 'left' }]}>Welcome back</Text>
+                <Text style={[styles.title, { color: colors.text, textAlign: 'left' }]}>
+                  {emailMode === 'signin' ? 'Welcome back' : 'Create account'}
+                </Text>
                 <Text style={[styles.subtitle, { color: colors.textSecondary, textAlign: 'left' }]}>
-                  Enter your details to continue.
+                  {emailMode === 'signin'
+                    ? 'Enter your details to continue.'
+                    : 'Sign up to get started.'}
                 </Text>
               </View>
 
@@ -187,17 +203,38 @@ export default function LoginScreen() {
                   />
                 </View>
 
-                <PrimaryButton 
-                  title="Continue" 
+                {authError && (
+                  <View style={[styles.errorBox, { backgroundColor: colors.card, borderColor: '#FF3B30' }]}>
+                    <Text style={styles.errorText}>{authError}</Text>
+                  </View>
+                )}
+
+                <PrimaryButton
+                  title={emailMode === 'signin' ? 'Sign In' : 'Create Account'}
                   onPress={handleEmailAuth}
                   isLoading={isLoading}
-                  disabled={!email || !password}
+                  disabled={!email.trim() || !password.trim()}
                 />
+
+                <TouchableOpacity
+                  style={styles.switchModeButton}
+                  onPress={() => {
+                    setAuthError(null);
+                    setEmailMode(emailMode === 'signin' ? 'signup' : 'signin');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.switchModeText, { color: colors.textSecondary }]}>
+                    {emailMode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
+                    <Text style={{ color: colors.text, fontWeight: '600' }}>
+                      {emailMode === 'signin' ? 'Sign Up' : 'Sign In'}
+                    </Text>
+                  </Text>
+                </TouchableOpacity>
               </View>
             </FadeInView>
           )}
 
-          {/* STEP 3: ONBOARDING (Language & T&C) */}
           {step === 'onboarding' && (
             <FadeInView style={styles.stepContainer}>
               <View style={styles.heroContainer}>
@@ -208,9 +245,8 @@ export default function LoginScreen() {
               </View>
 
               <View style={styles.formContainer}>
-                
                 <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>PRIMARY LANGUAGE</Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.langSelector, { backgroundColor: colors.card, borderColor: colors.border }]}
                   onPress={() => setIsLangSheetVisible(true)}
                   activeOpacity={0.7}
@@ -229,27 +265,29 @@ export default function LoginScreen() {
 
                 <View style={styles.spacer} />
 
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.termsContainer}
                   onPress={() => setAgreedToTerms(!agreedToTerms)}
                   activeOpacity={0.8}
                 >
                   <View style={[
-                    styles.checkbox, 
+                    styles.checkbox,
                     { borderColor: agreedToTerms ? colors.text : colors.border },
                     agreedToTerms && { backgroundColor: colors.text }
                   ]}>
                     {agreedToTerms && <Check size={14} color={colors.background} strokeWidth={3} />}
                   </View>
                   <Text style={[styles.termsText, { color: colors.textSecondary }]}>
-                    I agree to the <Text style={{ color: colors.text, fontWeight: '600' }}>Terms of Service</Text> and <Text style={{ color: colors.text, fontWeight: '600' }}>Privacy Policy</Text>.
+                    I agree to the{' '}
+                    <Text style={{ color: colors.text, fontWeight: '600' }}>Terms of Service</Text>
+                    {' '}and{' '}
+                    <Text style={{ color: colors.text, fontWeight: '600' }}>Privacy Policy</Text>.
                   </Text>
                 </TouchableOpacity>
 
-                <PrimaryButton 
-                  title="Get Started" 
+                <PrimaryButton
+                  title="Get Started"
                   onPress={handleCompleteOnboarding}
-                  isLoading={isLoading}
                   disabled={!selectedLangId || !agreedToTerms}
                 />
               </View>
@@ -259,7 +297,7 @@ export default function LoginScreen() {
         </View>
       </KeyboardAvoidingView>
 
-      <LanguageSelectionSheet 
+      <LanguageSelectionSheet
         visible={isLangSheetVisible}
         onClose={() => setIsLangSheetVisible(false)}
         onSelect={setSelectedLangId}
@@ -375,6 +413,23 @@ const styles = StyleSheet.create({
   input: {
     fontSize: 16,
     height: '100%',
+  },
+  errorBox: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 14,
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  switchModeButton: {
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  switchModeText: {
+    fontSize: 14,
   },
   sectionLabel: {
     fontSize: 12,

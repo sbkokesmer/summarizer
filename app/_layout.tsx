@@ -7,13 +7,10 @@ import { Colors } from '@/constants/Colors';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import '../i18n';
 
-function RootNavigator() {
+function AuthGuard() {
   const { session, isLoading } = useAuth();
   const router = useRouter();
   const segments = useSegments();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const colors = isDark ? Colors.dark : Colors.light;
 
   useEffect(() => {
     if (isLoading) return;
@@ -22,13 +19,23 @@ function RootNavigator() {
 
     if (!session && inTabsGroup) {
       router.replace('/login');
-    } else if (session && !inTabsGroup && segments[0] === 'login') {
+    } else if (session && segments[0] === 'login') {
       router.replace('/(tabs)');
     }
   }, [session, isLoading, segments]);
 
+  return null;
+}
+
+export default function RootLayout() {
+  useFrameworkReady();
+
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const colors = isDark ? Colors.dark : Colors.light;
+
   return (
-    <>
+    <AuthProvider>
       <Stack screenOptions={{
         headerStyle: { backgroundColor: colors.background },
         headerTintColor: colors.text,
@@ -61,17 +68,8 @@ function RootNavigator() {
         />
         <Stack.Screen name="+not-found" />
       </Stack>
+      <AuthGuard />
       <StatusBar style={isDark ? 'light' : 'dark'} />
-    </>
-  );
-}
-
-export default function RootLayout() {
-  useFrameworkReady();
-
-  return (
-    <AuthProvider>
-      <RootNavigator />
     </AuthProvider>
   );
 }

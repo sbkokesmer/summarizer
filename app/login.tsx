@@ -12,11 +12,10 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useColorScheme } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Mail, ChevronLeft, Check, Globe, ChevronDown, ShieldCheck } from 'lucide-react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
-import { Colors } from '@/constants/Colors';
+import { useTheme } from '@/context/ThemeContext';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { FadeInView } from '@/components/FadeInView';
 import { LanguageSelectionSheet, LANGUAGES } from '@/components/LanguageSelectionSheet';
@@ -32,9 +31,7 @@ type EmailMode = 'signin' | 'signup';
 export default function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const colors = isDark ? Colors.dark : Colors.light;
+  const { colors, isDark } = useTheme();
   const { signInWithEmail, signUpWithEmail } = useAuth();
 
   const [step, setStep] = useState<Step>('welcome');

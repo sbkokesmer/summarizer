@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, TextInput, Text, StyleSheet, useColorScheme } from 'react-native';
-import { Colors } from '@/constants/Colors';
+import { View, TextInput, Text, StyleSheet } from 'react-native';
+import { useTheme } from '@/context/ThemeContext';
 
 interface UrlInputCardProps {
   value: string;
@@ -9,9 +9,7 @@ interface UrlInputCardProps {
 }
 
 export function UrlInputCard({ value, onChangeText, disabled }: UrlInputCardProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const colors = isDark ? Colors.dark : Colors.light;
+  const { colors } = useTheme();
 
   return (
     <View style={styles.wrapper}>

@@ -10,7 +10,6 @@ import {
   Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useColorScheme } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
 import {
@@ -28,7 +27,7 @@ import {
 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import * as Clipboard from 'expo-clipboard';
-import { Colors } from '@/constants/Colors';
+import { useTheme } from '@/context/ThemeContext';
 import { FadeInView } from '@/components/FadeInView';
 import { loadHistory, deleteHistoryItem, clearHistory, HistoryItem, InputType } from '@/services/historyStore';
 
@@ -42,9 +41,7 @@ const INPUT_ICON: Record<InputType, { icon: typeof FileText; color: string }> = 
 
 export default function HistoryScreen() {
   const { t } = useTranslation();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const colors = isDark ? Colors.dark : Colors.light;
+  const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
   const [items, setItems] = useState<HistoryItem[]>([]);

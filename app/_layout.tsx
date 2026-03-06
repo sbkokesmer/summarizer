@@ -1,10 +1,9 @@
 import { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useColorScheme } from 'react-native';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
-import { Colors } from '@/constants/Colors';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import '../i18n';
 
 function AuthGuard() {
@@ -15,7 +14,13 @@ function AuthGuard() {
   useEffect(() => {
     if (isLoading) return;
 
-    const inProtectedArea = segments[0] === '(tabs)' || segments[0] === 'settings' || segments[0] === 'paywall';
+    const inProtectedArea =
+      segments[0] === '(tabs)' ||
+      segments[0] === 'settings' ||
+      segments[0] === 'paywall' ||
+      segments[0] === 'notifications' ||
+      segments[0] === 'help-center' ||
+      segments[0] === 'privacy-policy';
 
     if (!session && inProtectedArea) {
       router.replace('/login');
@@ -27,35 +32,57 @@ function AuthGuard() {
   return null;
 }
 
-export default function RootLayout() {
-  useFrameworkReady();
-
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const colors = isDark ? Colors.dark : Colors.light;
+function AppNavigator() {
+  const { colors, isDark } = useTheme();
 
   return (
-    <AuthProvider>
-      <Stack screenOptions={{
-        headerStyle: { backgroundColor: colors.background },
-        headerTintColor: colors.text,
-        headerShadowVisible: false,
-        contentStyle: { backgroundColor: colors.background }
-      }}>
+    <>
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerShadowVisible: false,
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="settings"
           options={{
             presentation: 'modal',
             title: 'Settings',
-            headerTitleStyle: { fontWeight: '600' }
+            headerTitleStyle: { fontWeight: '600' },
+          }}
+        />
+        <Stack.Screen
+          name="notifications"
+          options={{
+            presentation: 'modal',
+            title: 'Notifications',
+            headerTitleStyle: { fontWeight: '600' },
+          }}
+        />
+        <Stack.Screen
+          name="help-center"
+          options={{
+            presentation: 'modal',
+            title: 'Help Center',
+            headerTitleStyle: { fontWeight: '600' },
+          }}
+        />
+        <Stack.Screen
+          name="privacy-policy"
+          options={{
+            presentation: 'modal',
+            title: 'Privacy Policy',
+            headerTitleStyle: { fontWeight: '600' },
           }}
         />
         <Stack.Screen
           name="paywall"
           options={{
             presentation: 'fullScreenModal',
-            headerShown: false
+            headerShown: false,
           }}
         />
         <Stack.Screen
@@ -63,13 +90,25 @@ export default function RootLayout() {
           options={{
             presentation: 'fullScreenModal',
             headerShown: false,
-            animation: 'fade'
+            animation: 'fade',
           }}
         />
         <Stack.Screen name="+not-found" />
       </Stack>
       <AuthGuard />
       <StatusBar style={isDark ? 'light' : 'dark'} />
-    </AuthProvider>
+    </>
+  );
+}
+
+export default function RootLayout() {
+  useFrameworkReady();
+
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <AppNavigator />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

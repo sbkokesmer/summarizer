@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  useColorScheme,
   Animated,
   Easing,
   Platform,
@@ -13,7 +12,7 @@ import { Mic, Square, Trash2, Play, Pause, Upload, Music } from 'lucide-react-na
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { Audio } from 'expo-av';
-import { Colors } from '@/constants/Colors';
+import { useTheme } from '@/context/ThemeContext';
 
 export interface SelectedAudio {
   name: string;
@@ -37,9 +36,7 @@ export function AudioRecordCard({
   title = 'Record Audio',
   description = 'Tap to start recording your voice or meeting',
 }: AudioRecordCardProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const colors = isDark ? Colors.dark : Colors.light;
+  const { colors, isDark } = useTheme();
 
   const [mode, setMode] = useState<AudioMode>('record');
   const [state, setState] = useState<RecordState>('idle');

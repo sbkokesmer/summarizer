@@ -1,8 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { ShieldCheck } from 'lucide-react-native';
-import { useColorScheme } from 'react-native';
-import { Colors } from '@/constants/Colors';
+import { useTheme } from '@/context/ThemeContext';
 
 interface PrivacyBadgeProps {
   title?: string;
@@ -10,9 +9,7 @@ interface PrivacyBadgeProps {
 }
 
 export function PrivacyBadge({ title, description }: PrivacyBadgeProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const colors = isDark ? Colors.dark : Colors.light;
+  const { colors } = useTheme();
 
   return (
     <View style={styles.container}>

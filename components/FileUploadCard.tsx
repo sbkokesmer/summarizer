@@ -1,9 +1,9 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, useColorScheme, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { UploadCloud, FileText } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
-import { Colors } from '@/constants/Colors';
+import { useTheme } from '@/context/ThemeContext';
 
 export interface SelectedFile {
   name: string;
@@ -22,9 +22,7 @@ interface FileUploadCardProps {
 }
 
 export function FileUploadCard({ file, onFileSelected, onRemoveFile, disabled, title, description }: FileUploadCardProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const colors = isDark ? Colors.dark : Colors.light;
+  const { colors } = useTheme();
 
   const handlePick = async () => {
     if (disabled) return;

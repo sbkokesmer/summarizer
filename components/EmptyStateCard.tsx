@@ -1,8 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Sparkles } from 'lucide-react-native';
-import { useColorScheme } from 'react-native';
-import { Colors } from '@/constants/Colors';
+import { useTheme } from '@/context/ThemeContext';
 
 interface EmptyStateCardProps {
   title?: string;
@@ -10,9 +9,7 @@ interface EmptyStateCardProps {
 }
 
 export function EmptyStateCard({ title, description }: EmptyStateCardProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const colors = isDark ? Colors.dark : Colors.light;
+  const { colors, isDark } = useTheme();
 
   return (
     <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border }]}>

@@ -1,8 +1,7 @@
 import React from 'react';
 import { ScrollView, TouchableOpacity, Text, StyleSheet, View } from 'react-native';
-import { useColorScheme } from 'react-native';
 import { FileText, Link as LinkIcon, Type } from 'lucide-react-native';
-import { Colors } from '@/constants/Colors';
+import { useTheme } from '@/context/ThemeContext';
 
 interface SuggestionChipsProps {
   onSelect: (type: 'file' | 'url' | 'text') => void;
@@ -12,9 +11,7 @@ interface SuggestionChipsProps {
 }
 
 export function SuggestionChips({ onSelect, disabled, title, labels }: SuggestionChipsProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const colors = isDark ? Colors.dark : Colors.light;
+  const { colors } = useTheme();
 
   const defaultLabels = ["Meeting Notes", "Financial Report", "Tech Article"];
   const displayLabels = labels || defaultLabels;

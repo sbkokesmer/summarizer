@@ -45,7 +45,7 @@ export default {
     support: "DESTEK",
     help_center: "Yardım Merkezi",
     privacy_policy: "Gizlilik Politikası",
-    logout: "Çıkış Yap (Giriş Akışını Gör)",
+    logout: "Cikis Yap",
     version: "Sürüm"
   },
   components: {

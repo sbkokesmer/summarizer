@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, TextInput, StyleSheet, useColorScheme } from 'react-native';
-import { Colors } from '@/constants/Colors';
+import { View, TextInput, StyleSheet } from 'react-native';
+import { useTheme } from '@/context/ThemeContext';
 
 interface InputCardProps {
   value: string;
@@ -10,9 +10,7 @@ interface InputCardProps {
 }
 
 export function InputCard({ value, onChangeText, placeholder = "Paste or type your text...", editable = true }: InputCardProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const colors = isDark ? Colors.dark : Colors.light;
+  const { colors } = useTheme();
 
   return (
     <View style={[styles.container, { backgroundColor: colors.card }]}>

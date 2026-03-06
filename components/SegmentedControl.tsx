@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, useColorScheme } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useTheme } from '@/context/ThemeContext';
 
 interface SegmentedControlProps {
   options: string[];
@@ -9,8 +10,7 @@ interface SegmentedControlProps {
 }
 
 export function SegmentedControl({ options, selectedIndex, onChange, disabled }: SegmentedControlProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { isDark } = useTheme();
   
   // Lower contrast colors
   const containerBg = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';

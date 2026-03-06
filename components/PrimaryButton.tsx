@@ -1,5 +1,6 @@
 import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, useColorScheme } from 'react-native';
+import { TouchableOpacity, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { useTheme } from '@/context/ThemeContext';
 
 interface PrimaryButtonProps {
   title: string;
@@ -9,8 +10,7 @@ interface PrimaryButtonProps {
 }
 
 export function PrimaryButton({ title, onPress, isLoading, disabled }: PrimaryButtonProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { isDark } = useTheme();
   
   // Solid high-contrast background
   const bgColor = isDark ? '#FFFFFF' : '#000000';

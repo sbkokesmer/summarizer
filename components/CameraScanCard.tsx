@@ -4,14 +4,13 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  useColorScheme,
   Animated,
   Easing,
 } from 'react-native';
 import { Camera, RefreshCw, CheckCircle, Upload, FileImage, Trash2 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
-import { Colors } from '@/constants/Colors';
+import { useTheme } from '@/context/ThemeContext';
 
 export interface ScannedImage {
   name: string;
@@ -33,9 +32,7 @@ export function CameraScanCard({
   title = 'Scan Document',
   description = 'Point your camera at text to extract and process it',
 }: CameraScanCardProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const colors = isDark ? Colors.dark : Colors.light;
+  const { colors, isDark } = useTheme();
 
   const [mode, setMode] = useState<CameraMode>('camera');
   const [image, setImage] = useState<ScannedImage | null>(null);

@@ -1,8 +1,19 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Switch,
+  Modal,
+  Pressable,
+  Platform,
+} from 'react-native';
 import { useRouter } from 'expo-router';
-import { useColorScheme } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { BlurView } from 'expo-blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Crown,
   ChevronRight,
@@ -11,121 +22,421 @@ import {
   Globe,
   Shield,
   CircleHelp,
-  LogOut
+  LogOut,
+  Check,
 } from 'lucide-react-native';
-import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
+
+const APP_LANGUAGES = [
+  { id: 'en', label: 'English', flag: 'EN' },
+  { id: 'tr', label: 'Turkce', flag: 'TR' },
+];
 
 export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
-  const colorScheme = useColorScheme();
   const { signOut } = useAuth();
-  const isDark = colorScheme === 'dark';
-  const colors = isDark ? Colors.dark : Colors.light;
+  const { colors, isDark, themeMode, setThemeMode } = useTheme();
+  const insets = useSafeAreaInsets();
 
-  const toggleLanguage = () => {
-    const newLang = i18n.language === 'en' ? 'tr' : 'en';
-    i18n.changeLanguage(newLang);
+  const [languageSheetVisible, setLanguageSheetVisible] = useState(false);
+
+  const selectLanguage = (langId: string) => {
+    i18n.changeLanguage(langId);
+    setLanguageSheetVisible(false);
   };
 
-  const SettingRow = ({ icon: Icon, title, value, onPress, isSwitch = false, isDestructive = false }: any) => (
-    <TouchableOpacity 
-      style={[styles.row, { backgroundColor: colors.card, borderBottomColor: colors.border }]} 
-      onPress={onPress}
-      disabled={isSwitch && !onPress}
-      activeOpacity={0.7}
-    >
-      <View style={styles.rowLeft}>
-        <View style={[styles.iconContainer, { backgroundColor: isDestructive ? 'rgba(255,59,48,0.1)' : colors.background }]}>
-          <Icon size={20} color={isDestructive ? '#FF3B30' : colors.text} />
-        </View>
-        <Text style={[styles.rowTitle, { color: isDestructive ? '#FF3B30' : colors.text }]}>{title}</Text>
-      </View>
-      <View style={styles.rowRight}>
-        {value && <Text style={[styles.rowValue, { color: colors.textSecondary }]}>{value}</Text>}
-        {isSwitch ? (
-          <Switch value={isDark} disabled trackColor={{ true: '#34C759' }} />
-        ) : (
-          <ChevronRight size={20} color={colors.textSecondary} />
-        )}
-      </View>
-    </TouchableOpacity>
-  );
+  const toggleDarkMode = () => {
+    if (isDark) {
+      setThemeMode('light');
+    } else {
+      setThemeMode('dark');
+    }
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+  };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} showsVerticalScrollIndicator={false}>
-      
-      {/* Premium Banner */}
-      <TouchableOpacity 
-        style={styles.premiumBanner}
-        onPress={() => router.push('/paywall')}
-        activeOpacity={0.8}
+    <>
+      <ScrollView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.premiumContent}>
-          <Crown size={24} color="#FFFFFF" />
-          <View style={styles.premiumTextContainer}>
-            <Text style={styles.premiumTitle}>{t('settings.upgrade')}</Text>
-            <Text style={styles.premiumSubtitle}>{t('settings.upgrade_desc')}</Text>
+        <TouchableOpacity
+          style={styles.premiumBanner}
+          onPress={() => router.push('/paywall')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.premiumContent}>
+            <Crown size={24} color="#FFFFFF" />
+            <View style={styles.premiumTextContainer}>
+              <Text style={styles.premiumTitle}>{t('settings.upgrade')}</Text>
+              <Text style={styles.premiumSubtitle}>{t('settings.upgrade_desc')}</Text>
+            </View>
+          </View>
+          <ChevronRight size={20} color="rgba(255,255,255,0.5)" />
+        </TouchableOpacity>
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+            {t('settings.preferences')}
+          </Text>
+          <View style={[styles.group, { backgroundColor: colors.card }]}>
+            <TouchableOpacity
+              style={[styles.row, { borderBottomColor: colors.border }]}
+              onPress={() => setLanguageSheetVisible(true)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.rowLeft}>
+                <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
+                  <Globe size={20} color={colors.text} />
+                </View>
+                <Text style={[styles.rowTitle, { color: colors.text }]}>
+                  {t('settings.language')}
+                </Text>
+              </View>
+              <View style={styles.rowRight}>
+                <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
+                  {i18n.language === 'en' ? 'English' : 'Turkce'}
+                </Text>
+                <ChevronRight size={20} color={colors.textSecondary} />
+              </View>
+            </TouchableOpacity>
+
+            <View style={[styles.row, { borderBottomColor: colors.border }]}>
+              <View style={styles.rowLeft}>
+                <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
+                  <Moon size={20} color={colors.text} />
+                </View>
+                <Text style={[styles.rowTitle, { color: colors.text }]}>
+                  {t('settings.dark_mode')}
+                </Text>
+              </View>
+              <Switch
+                value={isDark}
+                onValueChange={toggleDarkMode}
+                trackColor={{ false: '#E5E5EA', true: '#34C759' }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.row, { borderBottomWidth: 0 }]}
+              onPress={() => router.push('/notifications')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.rowLeft}>
+                <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
+                  <Bell size={20} color={colors.text} />
+                </View>
+                <Text style={[styles.rowTitle, { color: colors.text }]}>
+                  {t('settings.notifications')}
+                </Text>
+              </View>
+              <View style={styles.rowRight}>
+                <ChevronRight size={20} color={colors.textSecondary} />
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
-        <ChevronRight size={20} color="rgba(255,255,255,0.5)" />
-      </TouchableOpacity>
 
-      {/* Settings Groups */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('settings.preferences')}</Text>
-        <View style={[styles.group, { backgroundColor: colors.card }]}>
-          <SettingRow 
-            icon={Globe} 
-            title={t('settings.language')} 
-            value={i18n.language === 'en' ? 'English' : 'Türkçe'} 
-            onPress={toggleLanguage}
-          />
-          <SettingRow icon={Moon} title={t('settings.dark_mode')} isSwitch />
-          <SettingRow icon={Bell} title={t('settings.notifications')} />
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+            {t('settings.support')}
+          </Text>
+          <View style={[styles.group, { backgroundColor: colors.card }]}>
+            <TouchableOpacity
+              style={[styles.row, { borderBottomColor: colors.border }]}
+              onPress={() => router.push('/help-center')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.rowLeft}>
+                <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
+                  <CircleHelp size={20} color={colors.text} />
+                </View>
+                <Text style={[styles.rowTitle, { color: colors.text }]}>
+                  {t('settings.help_center')}
+                </Text>
+              </View>
+              <View style={styles.rowRight}>
+                <ChevronRight size={20} color={colors.textSecondary} />
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.row, { borderBottomWidth: 0 }]}
+              onPress={() => router.push('/privacy-policy')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.rowLeft}>
+                <View style={[styles.iconContainer, { backgroundColor: colors.background }]}>
+                  <Shield size={20} color={colors.text} />
+                </View>
+                <Text style={[styles.rowTitle, { color: colors.text }]}>
+                  {t('settings.privacy_policy')}
+                </Text>
+              </View>
+              <View style={styles.rowRight}>
+                <ChevronRight size={20} color={colors.textSecondary} />
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
 
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('settings.support')}</Text>
-        <View style={[styles.group, { backgroundColor: colors.card }]}>
-          <SettingRow icon={CircleHelp} title={t('settings.help_center')} />
-          <SettingRow icon={Shield} title={t('settings.privacy_policy')} />
+        <View style={styles.section}>
+          <View style={[styles.group, { backgroundColor: colors.card }]}>
+            <TouchableOpacity
+              style={[styles.row, { borderBottomWidth: 0 }]}
+              onPress={handleLogout}
+              activeOpacity={0.7}
+            >
+              <View style={styles.rowLeft}>
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(255,59,48,0.1)' }]}>
+                  <LogOut size={20} color="#FF3B30" />
+                </View>
+                <Text style={[styles.rowTitle, { color: '#FF3B30' }]}>
+                  {t('settings.logout')}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
 
-      <View style={styles.section}>
-        <View style={[styles.group, { backgroundColor: colors.card }]}>
-          <SettingRow
-            icon={LogOut}
-            title={t('settings.logout')}
-            isDestructive
-            onPress={async () => { await signOut(); }}
-          />
+        <Text style={[styles.version, { color: colors.textSecondary }]}>
+          {t('settings.version')} 1.0.0
+        </Text>
+      </ScrollView>
+
+      <Modal
+        visible={languageSheetVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setLanguageSheetVisible(false)}
+      >
+        <View style={styles.overlay}>
+          <Pressable style={styles.backdrop} onPress={() => setLanguageSheetVisible(false)} />
+          <BlurView
+            intensity={Platform.OS === 'ios' ? 80 : 100}
+            tint="dark"
+            style={[
+              styles.sheet,
+              { paddingBottom: Math.max(insets.bottom, 24) },
+            ]}
+          >
+            <View style={styles.handleContainer}>
+              <View style={styles.handle} />
+            </View>
+
+            <Text style={styles.sheetTitle}>
+              {t('settings.language')}
+            </Text>
+
+            <View style={styles.langList}>
+              {APP_LANGUAGES.map((lang, index) => {
+                const isSelected = i18n.language === lang.id;
+                return (
+                  <React.Fragment key={lang.id}>
+                    <TouchableOpacity
+                      style={styles.langRow}
+                      onPress={() => selectLanguage(lang.id)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.langLeft}>
+                        <View style={styles.langFlag}>
+                          <Text style={styles.langFlagText}>{lang.flag}</Text>
+                        </View>
+                        <Text
+                          style={[
+                            styles.langLabel,
+                            isSelected && styles.langLabelSelected,
+                          ]}
+                        >
+                          {lang.label}
+                        </Text>
+                      </View>
+                      {isSelected && <Check size={20} color="#FFFFFF" strokeWidth={2.5} />}
+                    </TouchableOpacity>
+                    {index < APP_LANGUAGES.length - 1 && <View style={styles.langSeparator} />}
+                  </React.Fragment>
+                );
+              })}
+            </View>
+          </BlurView>
         </View>
-      </View>
-
-      <Text style={[styles.version, { color: colors.textSecondary }]}>{t('settings.version')} 1.0.0</Text>
-    </ScrollView>
+      </Modal>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  premiumBanner: { margin: 20, padding: 20, borderRadius: 20, backgroundColor: '#000000', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 },
-  premiumContent: { flexDirection: 'row', alignItems: 'center', gap: 16, flex: 1 },
-  premiumTextContainer: { flex: 1 },
-  premiumTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '700', marginBottom: 4 },
-  premiumSubtitle: { color: 'rgba(255,255,255,0.7)', fontSize: 13 },
-  section: { marginBottom: 24, paddingHorizontal: 20 },
-  sectionTitle: { fontSize: 12, fontWeight: '600', letterSpacing: 1, marginBottom: 8, marginLeft: 12 },
-  group: { borderRadius: 20, overflow: 'hidden' },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: StyleSheet.hairlineWidth },
-  rowLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  iconContainer: { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-  rowTitle: { fontSize: 16, fontWeight: '500' },
-  rowRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  rowValue: { fontSize: 15 },
-  version: { textAlign: 'center', fontSize: 13, marginBottom: 40 },
+  container: {
+    flex: 1,
+  },
+  premiumBanner: {
+    margin: 20,
+    padding: 20,
+    borderRadius: 20,
+    backgroundColor: '#000000',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  premiumContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    flex: 1,
+  },
+  premiumTextContainer: {
+    flex: 1,
+  },
+  premiumTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  premiumSubtitle: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 13,
+  },
+  section: {
+    marginBottom: 24,
+    paddingHorizontal: 20,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 1,
+    marginBottom: 8,
+    marginLeft: 12,
+    textTransform: 'uppercase',
+  },
+  group: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  rowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  iconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rowTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  rowRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  rowValue: {
+    fontSize: 15,
+  },
+  version: {
+    textAlign: 'center',
+    fontSize: 13,
+    marginBottom: 40,
+  },
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  sheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    backgroundColor: Platform.OS === 'android' ? 'rgba(28,28,30,0.95)' : 'transparent',
+  },
+  handleContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  handle: {
+    width: 36,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  sheetTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 16,
+    letterSpacing: -0.4,
+  },
+  langList: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  langRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+  },
+  langLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  langFlag: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  langFlagText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.8)',
+    letterSpacing: 0.5,
+  },
+  langLabel: {
+    fontSize: 17,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '400',
+  },
+  langLabelSelected: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  langSeparator: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    marginLeft: 60,
+  },
 });

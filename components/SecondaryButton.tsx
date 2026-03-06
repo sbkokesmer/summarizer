@@ -1,5 +1,6 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, useColorScheme } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { useTheme } from '@/context/ThemeContext';
 
 interface SecondaryButtonProps {
   title: string;
@@ -8,8 +9,7 @@ interface SecondaryButtonProps {
 }
 
 export function SecondaryButton({ title, onPress, disabled }: SecondaryButtonProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { isDark } = useTheme();
   
   const textColor = isDark ? '#FFFFFF' : '#000000';
   const borderColor = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)';

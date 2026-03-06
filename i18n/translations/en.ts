@@ -45,7 +45,7 @@ export default {
     support: "SUPPORT",
     help_center: "Help Center",
     privacy_policy: "Privacy Policy",
-    logout: "Log Out (View Login Flow)",
+    logout: "Log Out",
     version: "Version"
   },
   components: {

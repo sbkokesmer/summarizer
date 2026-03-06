@@ -15,9 +15,9 @@ function AuthGuard() {
   useEffect(() => {
     if (isLoading) return;
 
-    const inTabsGroup = segments[0] === '(tabs)';
+    const inProtectedArea = segments[0] === '(tabs)' || segments[0] === 'settings' || segments[0] === 'paywall';
 
-    if (!session && inTabsGroup) {
+    if (!session && inProtectedArea) {
       router.replace('/login');
     } else if (session && segments[0] === 'login') {
       router.replace('/(tabs)');

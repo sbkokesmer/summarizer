@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
 
 const NOTIF_KEY = '@notification_prefs';
 
@@ -11,6 +12,14 @@ const DEFAULT_PREFS: NotificationPrefs = {
   summaryReady: true,
 };
 
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
 export async function getNotificationPrefs(): Promise<NotificationPrefs> {
   try {
     const stored = await AsyncStorage.getItem(NOTIF_KEY);
@@ -19,28 +28,61 @@ export async function getNotificationPrefs(): Promise<NotificationPrefs> {
   return DEFAULT_PREFS;
 }
 
-export async function requestBrowserPermission(): Promise<boolean> {
-  if (Platform.OS !== 'web') return false;
-  if (typeof Notification === 'undefined') return false;
-  if (Notification.permission === 'granted') return true;
-  if (Notification.permission === 'denied') return false;
-  const result = await Notification.requestPermission();
-  return result === 'granted';
+export async function getPermissionStatus(): Promise<'granted' | 'denied' | 'undetermined'> {
+  if (Platform.OS === 'web') {
+    if (typeof Notification === 'undefined') return 'denied';
+    if (Notification.permission === 'granted') return 'granted';
+    if (Notification.permission === 'denied') return 'denied';
+    return 'undetermined';
+  }
+
+  const { status } = await Notifications.getPermissionsAsync();
+  if (status === 'granted') return 'granted';
+  if (status === 'denied') return 'denied';
+  return 'undetermined';
+}
+
+export async function requestPermission(): Promise<boolean> {
+  if (Platform.OS === 'web') {
+    if (typeof Notification === 'undefined') return false;
+    if (Notification.permission === 'granted') return true;
+    if (Notification.permission === 'denied') return false;
+    const result = await Notification.requestPermission();
+    return result === 'granted';
+  }
+
+  const { status: existing } = await Notifications.getPermissionsAsync();
+  if (existing === 'granted') return true;
+
+  const { status } = await Notifications.requestPermissionsAsync();
+  return status === 'granted';
 }
 
 export async function notifySummaryReady(title: string, body: string) {
-  if (Platform.OS !== 'web') return;
-  if (typeof Notification === 'undefined') return;
-
   const prefs = await getNotificationPrefs();
   if (!prefs.summaryReady) return;
 
-  if (Notification.permission !== 'granted') return;
+  if (Platform.OS === 'web') {
+    if (typeof Notification === 'undefined') return;
+    if (Notification.permission !== 'granted') return;
+    try {
+      new Notification(title, {
+        body: body.slice(0, 120),
+        icon: '/favicon.png',
+      });
+    } catch {}
+    return;
+  }
 
-  try {
-    new Notification(title, {
+  const { status } = await Notifications.getPermissionsAsync();
+  if (status !== 'granted') return;
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title,
       body: body.slice(0, 120),
-      icon: '/favicon.png',
-    });
-  } catch {}
+      sound: 'default',
+    },
+    trigger: null,
+  });
 }

@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Platform, Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/context/ThemeContext';
 import { useTranslation } from 'react-i18next';
 import { Bell, BellRing } from 'lucide-react-native';
-import { requestBrowserPermission } from '@/services/notifications';
+import { requestPermission, getPermissionStatus } from '@/services/notifications';
 
 const NOTIF_KEY = '@notification_prefs';
 
@@ -16,87 +16,105 @@ const DEFAULT_PREFS: NotificationPrefs = {
   summaryReady: true,
 };
 
-const TEXTS: Record<string, { heading: string; subtitle: string; summaryTitle: string; summaryDesc: string; permBanner: string; permBtn: string; footnote: string }> = {
+const TEXTS: Record<string, { heading: string; subtitle: string; summaryTitle: string; summaryDesc: string; permBanner: string; permBtn: string; permDenied: string; openSettings: string; footnote: string }> = {
   en: {
     heading: 'Notifications',
     subtitle: 'Manage how you receive notifications from SummaLingua.',
     summaryTitle: 'Summary Ready',
     summaryDesc: 'Get notified when your summary or translation is completed.',
-    permBanner: 'Browser notifications are not enabled. Allow notifications to get alerts when your content is ready.',
+    permBanner: 'Notifications are not enabled. Allow notifications to get alerts when your content is ready.',
     permBtn: 'Enable Notifications',
-    footnote: 'Notifications are delivered through your browser. You can change permissions anytime in browser settings.',
+    permDenied: 'Notifications have been denied. Please enable them in your device settings.',
+    openSettings: 'Open Settings',
+    footnote: 'Notifications are delivered through your device. You can change permissions anytime in Settings.',
   },
   tr: {
     heading: 'Bildirimler',
     subtitle: 'SummaLingua bildirimlerini nasil alacaginizi yonetin.',
     summaryTitle: 'Ozet Hazir',
     summaryDesc: 'Ozetiniz veya ceviriniz tamamlandiginda bildirim alin.',
-    permBanner: 'Tarayici bildirimleri etkin degil. Icerik hazir oldugunda uyari almak icin bildirimlere izin verin.',
+    permBanner: 'Bildirimler etkin degil. Icerik hazir oldugunda uyari almak icin bildirimlere izin verin.',
     permBtn: 'Bildirimleri Etkinlestir',
-    footnote: 'Bildirimler tarayiciniz araciligiyla gonderilir. Izinleri tarayici ayarlarindan istediginiz zaman degistirebilirsiniz.',
+    permDenied: 'Bildirimler reddedildi. Lutfen cihaz ayarlarindan etkinlestirin.',
+    openSettings: 'Ayarlari Ac',
+    footnote: 'Bildirimler cihaziniz araciligiyla gonderilir. Izinleri istediginiz zaman Ayarlar\'dan degistirebilirsiniz.',
   },
   es: {
     heading: 'Notificaciones',
     subtitle: 'Gestione como recibe notificaciones de SummaLingua.',
     summaryTitle: 'Resumen listo',
     summaryDesc: 'Reciba una notificacion cuando su resumen o traduccion este completo.',
-    permBanner: 'Las notificaciones del navegador no estan habilitadas. Permita las notificaciones para recibir alertas cuando su contenido este listo.',
+    permBanner: 'Las notificaciones no estan habilitadas. Permita las notificaciones para recibir alertas cuando su contenido este listo.',
     permBtn: 'Habilitar notificaciones',
-    footnote: 'Las notificaciones se envian a traves de su navegador. Puede cambiar los permisos en cualquier momento en la configuracion del navegador.',
+    permDenied: 'Las notificaciones han sido denegadas. Habilitelas en la configuracion de su dispositivo.',
+    openSettings: 'Abrir Ajustes',
+    footnote: 'Las notificaciones se envian a traves de su dispositivo. Puede cambiar los permisos en cualquier momento en Ajustes.',
   },
   fr: {
     heading: 'Notifications',
     subtitle: 'Gerez la facon dont vous recevez les notifications de SummaLingua.',
     summaryTitle: 'Resume pret',
     summaryDesc: 'Soyez notifie lorsque votre resume ou traduction est termine.',
-    permBanner: "Les notifications du navigateur ne sont pas activees. Autorisez les notifications pour recevoir des alertes lorsque votre contenu est pret.",
+    permBanner: "Les notifications ne sont pas activees. Autorisez les notifications pour recevoir des alertes lorsque votre contenu est pret.",
     permBtn: 'Activer les notifications',
-    footnote: 'Les notifications sont envoyees via votre navigateur. Vous pouvez modifier les permissions a tout moment dans les parametres du navigateur.',
+    permDenied: 'Les notifications ont ete refusees. Veuillez les activer dans les parametres de votre appareil.',
+    openSettings: 'Ouvrir les Reglages',
+    footnote: 'Les notifications sont envoyees via votre appareil. Vous pouvez modifier les permissions a tout moment dans les Reglages.',
   },
   de: {
     heading: 'Benachrichtigungen',
     subtitle: 'Verwalten Sie, wie Sie Benachrichtigungen von SummaLingua erhalten.',
     summaryTitle: 'Zusammenfassung fertig',
     summaryDesc: 'Erhalten Sie eine Benachrichtigung, wenn Ihre Zusammenfassung oder Ubersetzung fertig ist.',
-    permBanner: 'Browser-Benachrichtigungen sind nicht aktiviert. Erlauben Sie Benachrichtigungen, um Alarme zu erhalten, wenn Ihr Inhalt fertig ist.',
+    permBanner: 'Benachrichtigungen sind nicht aktiviert. Erlauben Sie Benachrichtigungen, um Alarme zu erhalten, wenn Ihr Inhalt fertig ist.',
     permBtn: 'Benachrichtigungen aktivieren',
-    footnote: 'Benachrichtigungen werden uber Ihren Browser zugestellt. Sie konnen die Berechtigungen jederzeit in den Browsereinstellungen andern.',
+    permDenied: 'Benachrichtigungen wurden abgelehnt. Bitte aktivieren Sie sie in den Gerateinstellungen.',
+    openSettings: 'Einstellungen offnen',
+    footnote: 'Benachrichtigungen werden uber Ihr Gerat zugestellt. Sie konnen die Berechtigungen jederzeit in den Einstellungen andern.',
   },
   it: {
     heading: 'Notifiche',
     subtitle: 'Gestisci come ricevi le notifiche da SummaLingua.',
     summaryTitle: 'Riassunto pronto',
     summaryDesc: 'Ricevi una notifica quando il tuo riassunto o traduzione e completo.',
-    permBanner: 'Le notifiche del browser non sono abilitate. Consenti le notifiche per ricevere avvisi quando il tuo contenuto e pronto.',
+    permBanner: 'Le notifiche non sono abilitate. Consenti le notifiche per ricevere avvisi quando il tuo contenuto e pronto.',
     permBtn: 'Abilita notifiche',
-    footnote: 'Le notifiche vengono inviate tramite il browser. Puoi modificare i permessi in qualsiasi momento nelle impostazioni del browser.',
+    permDenied: 'Le notifiche sono state negate. Abilitale nelle impostazioni del dispositivo.',
+    openSettings: 'Apri Impostazioni',
+    footnote: 'Le notifiche vengono inviate tramite il dispositivo. Puoi modificare i permessi in qualsiasi momento nelle Impostazioni.',
   },
   ja: {
     heading: '通知',
     subtitle: 'SummaLinguaからの通知の受け取り方法を管理します。',
     summaryTitle: '要約完了',
     summaryDesc: '要約または翻訳が完了したときに通知を受け取ります。',
-    permBanner: 'ブラウザ通知が有効になっていません。コンテンツの準備ができたときにアラートを受け取るには、通知を許可してください。',
+    permBanner: '通知が有効になっていません。コンテンツの準備ができたときにアラートを受け取るには、通知を許可してください。',
     permBtn: '通知を有効にする',
-    footnote: '通知はブラウザを通じて配信されます。ブラウザの設定からいつでも権限を変更できます。',
+    permDenied: '通知が拒否されました。デバイスの設定から有効にしてください。',
+    openSettings: '設定を開く',
+    footnote: '通知はデバイスを通じて配信されます。設定からいつでも権限を変更できます。',
   },
   ko: {
     heading: '알림',
     subtitle: 'SummaLingua에서 알림을 받는 방법을 관리합니다.',
     summaryTitle: '요약 완료',
     summaryDesc: '요약 또는 번역이 완료되면 알림을 받습니다.',
-    permBanner: '브라우저 알림이 활성화되지 않았습니다. 콘텐츠가 준비되면 알림을 받으려면 알림을 허용하세요.',
+    permBanner: '알림이 활성화되지 않았습니다. 콘텐츠가 준비되면 알림을 받으려면 알림을 허용하세요.',
     permBtn: '알림 활성화',
-    footnote: '알림은 브라우저를 통해 전달됩니다. 브라우저 설정에서 언제든지 권한을 변경할 수 있습니다.',
+    permDenied: '알림이 거부되었습니다. 기기 설정에서 활성화해 주세요.',
+    openSettings: '설정 열기',
+    footnote: '알림은 기기를 통해 전달됩니다. 설정에서 언제든지 권한을 변경할 수 있습니다.',
   },
   zh: {
     heading: '通知',
     subtitle: '管理您从 SummaLingua 接收通知的方式。',
     summaryTitle: '摘要完成',
     summaryDesc: '当您的摘要或翻译完成时收到通知。',
-    permBanner: '浏览器通知未启用。允许通知以在内容准备好时收到提醒。',
+    permBanner: '通知未启用。允许通知以在内容准备好时收到提醒。',
     permBtn: '启用通知',
-    footnote: '通知通过您的浏览器发送。您可以随时在浏览器设置中更改权限。',
+    permDenied: '通知已被拒绝。请在设备设置中启用。',
+    openSettings: '打开设置',
+    footnote: '通知通过您的设备发送。您可以随时在设置中更改权限。',
   },
 };
 
@@ -107,7 +125,7 @@ export default function NotificationsScreen() {
   const txt = TEXTS[i18n.language] || TEXTS.en;
 
   const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS);
-  const [browserPermission, setBrowserPermission] = useState<string>('default');
+  const [permStatus, setPermStatus] = useState<'granted' | 'denied' | 'undetermined'>('undetermined');
 
   useEffect(() => {
     AsyncStorage.getItem(NOTIF_KEY).then((stored) => {
@@ -115,10 +133,13 @@ export default function NotificationsScreen() {
         try { setPrefs(JSON.parse(stored)); } catch {}
       }
     });
-    if (Platform.OS === 'web' && typeof Notification !== 'undefined') {
-      setBrowserPermission(Notification.permission);
-    }
+    checkPermission();
   }, []);
+
+  const checkPermission = async () => {
+    const status = await getPermissionStatus();
+    setPermStatus(status);
+  };
 
   const togglePref = (key: keyof NotificationPrefs) => {
     const updated = { ...prefs, [key]: !prefs[key] };
@@ -127,11 +148,20 @@ export default function NotificationsScreen() {
   };
 
   const handleEnableNotifications = async () => {
-    const granted = await requestBrowserPermission();
-    setBrowserPermission(granted ? 'granted' : 'denied');
+    const granted = await requestPermission();
+    setPermStatus(granted ? 'granted' : 'denied');
   };
 
-  const showPermBanner = Platform.OS === 'web' && browserPermission !== 'granted';
+  const handleOpenSettings = () => {
+    if (Platform.OS === 'ios') {
+      Linking.openURL('app-settings:');
+    } else if (Platform.OS === 'android') {
+      Linking.openSettings();
+    }
+  };
+
+  const showPermBanner = permStatus !== 'granted';
+  const isDenied = permStatus === 'denied';
 
   return (
     <ScrollView
@@ -146,14 +176,26 @@ export default function NotificationsScreen() {
         <View style={[styles.permBanner, { backgroundColor: isDark ? 'rgba(255,149,0,0.12)' : 'rgba(255,149,0,0.08)', borderColor: isDark ? 'rgba(255,149,0,0.3)' : 'rgba(255,149,0,0.2)' }]}>
           <BellRing size={20} color="#FF9500" />
           <View style={styles.permBannerText}>
-            <Text style={[styles.permBannerDesc, { color: colors.text }]}>{txt.permBanner}</Text>
-            <TouchableOpacity
-              style={[styles.permBtn, { backgroundColor: '#FF9500' }]}
-              onPress={handleEnableNotifications}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.permBtnText}>{txt.permBtn}</Text>
-            </TouchableOpacity>
+            <Text style={[styles.permBannerDesc, { color: colors.text }]}>
+              {isDenied ? txt.permDenied : txt.permBanner}
+            </Text>
+            {isDenied && Platform.OS !== 'web' ? (
+              <TouchableOpacity
+                style={[styles.permBtn, { backgroundColor: '#FF9500' }]}
+                onPress={handleOpenSettings}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.permBtnText}>{txt.openSettings}</Text>
+              </TouchableOpacity>
+            ) : !isDenied ? (
+              <TouchableOpacity
+                style={[styles.permBtn, { backgroundColor: '#FF9500' }]}
+                onPress={handleEnableNotifications}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.permBtnText}>{txt.permBtn}</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         </View>
       )}

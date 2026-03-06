@@ -24,10 +24,12 @@ import {
   Trash2,
   X,
   Copy,
+  FileDown,
 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '@/context/ThemeContext';
+import { exportToPdf } from '@/services/pdfExport';
 import { FadeInView } from '@/components/FadeInView';
 import { loadHistory, deleteHistoryItem, clearHistory, HistoryItem, InputType } from '@/services/historyStore';
 
@@ -85,8 +87,19 @@ export default function HistoryScreen() {
     );
   };
 
+  const [exporting, setExporting] = useState(false);
+
   const handleCopy = async (text: string) => {
     await Clipboard.setStringAsync(text);
+  };
+
+  const handleExportPdf = async (item: HistoryItem) => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      await exportToPdf(item.result, item.title);
+    } catch {}
+    setExporting(false);
   };
 
   const gradientColors = isDark ? ['#1C1C1E', '#000000'] : ['#F2F2F7', '#FFFFFF'];
@@ -189,6 +202,9 @@ export default function HistoryScreen() {
               <View style={styles.modalActions}>
                 <TouchableOpacity onPress={() => handleCopy(selected.result)} style={styles.modalActionBtn} activeOpacity={0.7}>
                   <Copy size={18} color={colors.textSecondary} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleExportPdf(selected)} style={styles.modalActionBtn} activeOpacity={0.7} disabled={exporting}>
+                  <FileDown size={18} color={exporting ? colors.border : colors.textSecondary} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => handleDelete(selected.id)}

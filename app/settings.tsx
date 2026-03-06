@@ -3,22 +3,24 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 're
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { 
-  Crown, 
-  ChevronRight, 
-  Bell, 
-  Moon, 
-  Globe, 
-  Shield, 
+import {
+  Crown,
+  ChevronRight,
+  Bell,
+  Moon,
+  Globe,
+  Shield,
   CircleHelp,
   LogOut
 } from 'lucide-react-native';
 import { Colors } from '@/constants/Colors';
+import { useAuth } from '@/context/AuthContext';
 
 export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const colorScheme = useColorScheme();
+  const { signOut } = useAuth();
   const isDark = colorScheme === 'dark';
   const colors = isDark ? Colors.dark : Colors.light;
 
@@ -95,11 +97,11 @@ export default function SettingsScreen() {
 
       <View style={styles.section}>
         <View style={[styles.group, { backgroundColor: colors.card }]}>
-          <SettingRow 
-            icon={LogOut} 
-            title={t('settings.logout')} 
-            isDestructive 
-            onPress={() => router.push('/login')}
+          <SettingRow
+            icon={LogOut}
+            title={t('settings.logout')}
+            isDestructive
+            onPress={async () => { await signOut(); }}
           />
         </View>
       </View>

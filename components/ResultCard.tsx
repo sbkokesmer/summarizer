@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Platform } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import { Copy, Share, Check } from 'lucide-react-native';
+import { Copy, Share, Check, FileDown } from 'lucide-react-native';
 import { useTheme } from '@/context/ThemeContext';
+import { exportToPdf } from '@/services/pdfExport';
 
 interface ResultCardProps {
   result: string;
@@ -75,6 +76,7 @@ const renderSmartText = (text: string, textColor: string) => {
 export function ResultCard({ result }: ResultCardProps) {
   const { colors } = useTheme();
   const [copied, setCopied] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   if (!result) return null;
 
@@ -101,6 +103,15 @@ export function ResultCard({ result }: ResultCardProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleExportPdf = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      await exportToPdf(result);
+    } catch {}
+    setExporting(false);
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.card }]}>
       <View style={styles.header}>
@@ -112,6 +123,9 @@ export function ResultCard({ result }: ResultCardProps) {
             ) : (
               <Copy size={18} color={colors.textSecondary} strokeWidth={1.5} />
             )}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconButton} activeOpacity={0.6} onPress={handleExportPdf} disabled={exporting}>
+            <FileDown size={18} color={exporting ? colors.border : colors.textSecondary} strokeWidth={1.5} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconButton} activeOpacity={0.6} onPress={handleShare}>
             <Share size={18} color={colors.textSecondary} strokeWidth={1.5} />

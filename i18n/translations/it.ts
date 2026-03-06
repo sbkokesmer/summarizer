@@ -48,6 +48,25 @@ export default {
     logout: "Esci",
     version: "Versione"
   },
+  translate: {
+    title: "Traduci",
+    text: "Testo",
+    file: "File",
+    url: "URL",
+    audio: "Audio",
+    camera: "Fotocamera",
+    translate_to: "Traduci in",
+    tone: "Tono",
+    keep_original: "Mantieni il testo originale nel risultato",
+    btn_translate: "Traduci in {{lang}}",
+    btn_translate_summarize: "Traduci e Riassumi",
+    missing_input: "Input mancante",
+    missing_input_desc: "Fornisci contenuto da elaborare.",
+    audio_title: "Registra audio",
+    audio_desc: "Registra una conversazione o riunione per tradurla",
+    camera_title: "Scansiona e Traduci",
+    camera_desc: "Punta la fotocamera sul testo per tradurlo istantaneamente"
+  },
   components: {
     input_placeholder: "Incolla o digita il tuo testo qui...",
     upload_title: "Carica documento",

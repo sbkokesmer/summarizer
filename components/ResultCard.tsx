@@ -1,6 +1,7 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { Copy, Share } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Platform } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
+import { Copy, Share, Check } from 'lucide-react-native';
 import { useTheme } from '@/context/ThemeContext';
 
 interface ResultCardProps {
@@ -73,23 +74,51 @@ const renderSmartText = (text: string, textColor: string) => {
 
 export function ResultCard({ result }: ResultCardProps) {
   const { colors } = useTheme();
+  const [copied, setCopied] = useState(false);
 
   if (!result) return null;
+
+  const plainText = result
+    .replace(/^#{1,3}\s/gm, '')
+    .replace(/\*\*/g, '')
+    .replace(/^[-*]\s/gm, '- ');
+
+  const handleCopy = async () => {
+    await Clipboard.setStringAsync(plainText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShare = async () => {
+    if (Platform.OS === 'web' && navigator.share) {
+      try {
+        await navigator.share({ text: plainText });
+      } catch {}
+      return;
+    }
+    await Clipboard.setStringAsync(plainText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.card }]}>
       <View style={styles.header}>
         <Text style={[styles.label, { color: colors.textSecondary }]}>Result</Text>
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.iconButton} activeOpacity={0.6}>
-            <Copy size={18} color={colors.textSecondary} strokeWidth={1.5} />
+          <TouchableOpacity style={styles.iconButton} activeOpacity={0.6} onPress={handleCopy}>
+            {copied ? (
+              <Check size={18} color="#34C759" strokeWidth={1.5} />
+            ) : (
+              <Copy size={18} color={colors.textSecondary} strokeWidth={1.5} />
+            )}
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton} activeOpacity={0.6}>
+          <TouchableOpacity style={styles.iconButton} activeOpacity={0.6} onPress={handleShare}>
             <Share size={18} color={colors.textSecondary} strokeWidth={1.5} />
           </TouchableOpacity>
         </View>
       </View>
-      
+
       <ScrollView style={styles.scrollArea} showsVerticalScrollIndicator={false}>
         <View style={styles.contentContainer}>
           {renderSmartText(result, colors.text)}

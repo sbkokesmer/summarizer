@@ -48,6 +48,25 @@ export default {
     logout: "Abmelden",
     version: "Version"
   },
+  translate: {
+    title: "Ubersetzen",
+    text: "Text",
+    file: "Datei",
+    url: "URL",
+    audio: "Audio",
+    camera: "Kamera",
+    translate_to: "Ubersetzen nach",
+    tone: "Ton",
+    keep_original: "Originaltext im Ergebnis behalten",
+    btn_translate: "Auf {{lang}} ubersetzen",
+    btn_translate_summarize: "Ubersetzen & Zusammenfassen",
+    missing_input: "Fehlende Eingabe",
+    missing_input_desc: "Bitte stellen Sie Inhalte zur Verarbeitung bereit.",
+    audio_title: "Audio aufnehmen",
+    audio_desc: "Sprache oder Besprechung aufnehmen zum Ubersetzen",
+    camera_title: "Scannen & Ubersetzen",
+    camera_desc: "Richten Sie die Kamera auf Text, um ihn sofort zu ubersetzen"
+  },
   components: {
     input_placeholder: "Fugen Sie hier Ihren Text ein oder geben Sie ihn ein...",
     upload_title: "Dokument hochladen",

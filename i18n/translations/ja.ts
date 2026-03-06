@@ -48,6 +48,25 @@ export default {
     logout: "ログアウト",
     version: "バージョン"
   },
+  translate: {
+    title: "翻訳",
+    text: "テキスト",
+    file: "ファイル",
+    url: "URL",
+    audio: "音声",
+    camera: "カメラ",
+    translate_to: "翻訳先",
+    tone: "トーン",
+    keep_original: "結果に原文を残す",
+    btn_translate: "{{lang}}に翻訳",
+    btn_translate_summarize: "翻訳して要約",
+    missing_input: "入力がありません",
+    missing_input_desc: "処理するコンテンツを提供してください。",
+    audio_title: "音声を録音",
+    audio_desc: "翻訳するために会話や会議を録音",
+    camera_title: "スキャンして翻訳",
+    camera_desc: "カメラをテキストに向けて即座に翻訳"
+  },
   components: {
     input_placeholder: "テキストをここに貼り付けまたは入力...",
     upload_title: "ドキュメントをアップロード",

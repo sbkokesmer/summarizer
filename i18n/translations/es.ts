@@ -48,6 +48,25 @@ export default {
     logout: "Cerrar sesion",
     version: "Version"
   },
+  translate: {
+    title: "Traducir",
+    text: "Texto",
+    file: "Archivo",
+    url: "URL",
+    audio: "Audio",
+    camera: "Camara",
+    translate_to: "Traducir a",
+    tone: "Tono",
+    keep_original: "Mantener texto original en el resultado",
+    btn_translate: "Traducir a {{lang}}",
+    btn_translate_summarize: "Traducir y Resumir",
+    missing_input: "Entrada faltante",
+    missing_input_desc: "Por favor proporcione contenido para procesar.",
+    audio_title: "Grabar audio",
+    audio_desc: "Grabe una conversacion o reunion para traducirla",
+    camera_title: "Escanear y Traducir",
+    camera_desc: "Apunte su camara al texto para traducirlo al instante"
+  },
   components: {
     input_placeholder: "Pegue o escriba su texto aqui...",
     upload_title: "Subir documento",

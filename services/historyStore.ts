@@ -37,7 +37,9 @@ export async function saveHistoryItem(item: Omit<HistoryItem, 'id' | 'date' | 't
     const existing = await loadHistory();
     const updated = [newItem, ...existing].slice(0, MAX_ITEMS);
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  } catch {}
+  } catch (err) {
+    console.warn('[HistoryStore]', err);
+  }
   return newItem;
 }
 
@@ -46,11 +48,15 @@ export async function deleteHistoryItem(id: string): Promise<void> {
     const existing = await loadHistory();
     const updated = existing.filter((i) => i.id !== id);
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  } catch {}
+  } catch (err) {
+    console.warn('[HistoryStore]', err);
+  }
 }
 
 export async function clearHistory(): Promise<void> {
   try {
     await AsyncStorage.removeItem(STORAGE_KEY);
-  } catch {}
+  } catch (err) {
+    console.warn('[HistoryStore]', err);
+  }
 }

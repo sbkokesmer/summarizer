@@ -48,6 +48,25 @@ export default {
     logout: "退出登录",
     version: "版本"
   },
+  translate: {
+    title: "翻译",
+    text: "文本",
+    file: "文件",
+    url: "网址",
+    audio: "音频",
+    camera: "相机",
+    translate_to: "翻译为",
+    tone: "语气",
+    keep_original: "在结果中保留原文",
+    btn_translate: "翻译为{{lang}}",
+    btn_translate_summarize: "翻译并摘要",
+    missing_input: "缺少输入",
+    missing_input_desc: "请提供要处理的内容。",
+    audio_title: "录制音频",
+    audio_desc: "录制对话或会议以进行翻译",
+    camera_title: "扫描并翻译",
+    camera_desc: "将相机对准文本即时翻译"
+  },
   components: {
     input_placeholder: "在此粘贴或输入文本...",
     upload_title: "上传文档",

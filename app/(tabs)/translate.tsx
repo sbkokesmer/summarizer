@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, Alert, Animated
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Globe, ChevronDown, Sparkles } from 'lucide-react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '@/context/ThemeContext';
 import { AppIdentityBadge } from '@/components/AppIdentityBadge';
 import { SegmentedControl } from '@/components/SegmentedControl';
@@ -26,13 +27,20 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const INPUT_TYPES = ['Text', 'File', 'URL', 'Audio', 'Camera'];
-
 export default function TranslateScreen() {
+  const { t } = useTranslation();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
   const scrollY = useRef(new Animated.Value(0)).current;
+
+  const INPUT_TYPES = [
+    t('translate.text'),
+    t('translate.file'),
+    t('translate.url'),
+    t('translate.audio'),
+    t('translate.camera'),
+  ];
 
   const [inputTypeIndex, setInputTypeIndex] = useState(0);
   const [text, setText] = useState('');
@@ -92,7 +100,7 @@ export default function TranslateScreen() {
 
   const executeAction = async (actionType: 'translate' | 'both') => {
     if (!checkInput()) {
-      Alert.alert('Missing Input', 'Please provide content to process.');
+      Alert.alert(t('translate.missing_input'), t('translate.missing_input_desc'));
       return;
     }
 
@@ -182,7 +190,7 @@ export default function TranslateScreen() {
           onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
           scrollEventThrottle={16}
         >
-          <AppIdentityBadge title="Translate" />
+          <AppIdentityBadge title={t('translate.title')} />
 
           <View style={styles.paddingHorizontal}>
             <SegmentedControl options={INPUT_TYPES} selectedIndex={inputTypeIndex} onChange={handleInputTypeChange} disabled={isLoading} />
@@ -208,16 +216,16 @@ export default function TranslateScreen() {
                 <AudioRecordCard
                   onRecordingChange={handleAudioChange}
                   disabled={isLoading}
-                  title="Record Audio"
-                  description="Record speech or a meeting to translate it"
+                  title={t('translate.audio_title')}
+                  description={t('translate.audio_desc')}
                 />
               )}
               {inputTypeIndex === 4 && (
                 <CameraScanCard
                   onScanChange={handleScanChange}
                   disabled={isLoading}
-                  title="Scan & Translate"
-                  description="Point your camera at text to translate it instantly"
+                  title={t('translate.camera_title')}
+                  description={t('translate.camera_desc')}
                 />
               )}
             </FadeInView>
@@ -233,7 +241,7 @@ export default function TranslateScreen() {
               >
                 <View style={styles.configHeader}>
                   <Globe size={14} color={colors.textSecondary} />
-                  <Text style={[styles.configLabel, { color: colors.textSecondary }]}>Translate To</Text>
+                  <Text style={[styles.configLabel, { color: colors.textSecondary }]}>{t('translate.translate_to')}</Text>
                 </View>
                 <View style={styles.configValueRow}>
                   <Text style={[styles.configValue, { color: colors.text }]} numberOfLines={1}>
@@ -251,7 +259,7 @@ export default function TranslateScreen() {
               >
                 <View style={styles.configHeader}>
                   <Sparkles size={14} color={colors.textSecondary} />
-                  <Text style={[styles.configLabel, { color: colors.textSecondary }]}>Tone</Text>
+                  <Text style={[styles.configLabel, { color: colors.textSecondary }]}>{t('translate.tone')}</Text>
                 </View>
                 <View style={styles.configValueRow}>
                   <Text style={[styles.configValue, { color: colors.text }]} numberOfLines={1}>
@@ -263,7 +271,7 @@ export default function TranslateScreen() {
             </View>
 
             <View style={styles.toggleRow}>
-              <Text style={[styles.toggleText, { color: colors.textSecondary }]}>Keep original text in result</Text>
+              <Text style={[styles.toggleText, { color: colors.textSecondary }]}>{t('translate.keep_original')}</Text>
               <Switch
                 value={keepOriginal}
                 onValueChange={setKeepOriginal}
@@ -273,13 +281,13 @@ export default function TranslateScreen() {
             </View>
 
             <PrimaryButton
-              title={`Translate to ${selectedLang.label}`}
+              title={t('translate.btn_translate', { lang: selectedLang.label })}
               onPress={() => executeAction('translate')}
               isLoading={isLoading && pendingAction === 'translate'}
             />
 
             <SecondaryButton
-              title="Translate & Summarize"
+              title={t('translate.btn_translate_summarize')}
               onPress={() => executeAction('both')}
               disabled={isLoading}
             />

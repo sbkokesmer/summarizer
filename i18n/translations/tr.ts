@@ -48,6 +48,25 @@ export default {
     logout: "Cikis Yap",
     version: "Sürüm"
   },
+  translate: {
+    title: "Çevir",
+    text: "Metin",
+    file: "Dosya",
+    url: "URL",
+    audio: "Ses",
+    camera: "Kamera",
+    translate_to: "Çeviri Dili",
+    tone: "Ton",
+    keep_original: "Orijinal metni sonuçta tut",
+    btn_translate: "{{lang}} diline çevir",
+    btn_translate_summarize: "Çevir ve Özetle",
+    missing_input: "Eksik Girdi",
+    missing_input_desc: "Lütfen işlenecek içeriği sağlayın.",
+    audio_title: "Ses Kaydet",
+    audio_desc: "Çevirmek için konuşma veya toplantı kaydedin",
+    camera_title: "Tara ve Çevir",
+    camera_desc: "Anında çevirmek için kameranızı metne tutun"
+  },
   components: {
     input_placeholder: "Metninizi buraya yapıştırın veya yazın...",
     upload_title: "Belge Yükle",

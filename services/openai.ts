@@ -1,5 +1,8 @@
+import { supabase } from '@/lib/supabase';
+
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+const REQUEST_TIMEOUT = 60000;
 
 type Action = "summarize" | "translate" | "summarize_translate";
 
@@ -20,6 +23,20 @@ export interface OpenAIRequestParams {
   customFocus?: string;
 }
 
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || SUPABASE_ANON_KEY;
+  return {
+    Authorization: `Bearer ${token}`,
+  };
+}
+
+function createTimeoutSignal(): { signal: AbortSignal; clear: () => void } {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+  return { signal: controller.signal, clear: () => clearTimeout(timeout) };
+}
+
 export async function callOpenAI(params: OpenAIRequestParams): Promise<string> {
   if (params.audioBlob || params.audioBase64) {
     return callOpenAIWithAudio(params);
@@ -29,22 +46,33 @@ export async function callOpenAI(params: OpenAIRequestParams): Promise<string> {
     return callOpenAIWithFile(params);
   }
 
-  const response = await fetch(`${SUPABASE_URL}/functions/v1/openai-proxy`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    },
-    body: JSON.stringify(params),
-  });
+  const authHeaders = await getAuthHeaders();
+  const { signal, clear } = createTimeoutSignal();
 
-  const data = await response.json();
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/openai-proxy`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders,
+      },
+      body: JSON.stringify(params),
+      signal,
+    });
 
-  if (!response.ok || data.error) {
-    throw new Error(data.error || "Something went wrong");
+    const data = await response.json();
+
+    if (!response.ok || data.error) {
+      throw new Error(data.error || "Something went wrong");
+    }
+
+    return data.result;
+  } catch (err: any) {
+    if (err.name === 'AbortError') throw new Error('Request timed out. Please try again.');
+    throw err;
+  } finally {
+    clear();
   }
-
-  return data.result;
 }
 
 async function callOpenAIWithFile(params: OpenAIRequestParams): Promise<string> {
@@ -67,21 +95,30 @@ async function callOpenAIWithFile(params: OpenAIRequestParams): Promise<string> 
     form.append("file", blob, params.fileName || "document");
   }
 
-  const response = await fetch(`${SUPABASE_URL}/functions/v1/openai-proxy-file`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    },
-    body: form,
-  });
+  const authHeaders = await getAuthHeaders();
+  const { signal, clear } = createTimeoutSignal();
 
-  const data = await response.json();
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/openai-proxy-file`, {
+      method: "POST",
+      headers: authHeaders,
+      body: form,
+      signal,
+    });
 
-  if (!response.ok || data.error) {
-    throw new Error(data.error || "Something went wrong");
+    const data = await response.json();
+
+    if (!response.ok || data.error) {
+      throw new Error(data.error || "Something went wrong");
+    }
+
+    return data.result;
+  } catch (err: any) {
+    if (err.name === 'AbortError') throw new Error('Request timed out. Please try again.');
+    throw err;
+  } finally {
+    clear();
   }
-
-  return data.result;
 }
 
 async function callOpenAIWithAudio(params: OpenAIRequestParams): Promise<string> {
@@ -106,19 +143,28 @@ async function callOpenAIWithAudio(params: OpenAIRequestParams): Promise<string>
     form.append("audio", blob, params.fileName || `audio.${ext}`);
   }
 
-  const response = await fetch(`${SUPABASE_URL}/functions/v1/openai-proxy-audio`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    },
-    body: form,
-  });
+  const authHeaders = await getAuthHeaders();
+  const { signal, clear } = createTimeoutSignal();
 
-  const data = await response.json();
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/openai-proxy-audio`, {
+      method: "POST",
+      headers: authHeaders,
+      body: form,
+      signal,
+    });
 
-  if (!response.ok || data.error) {
-    throw new Error(data.error || "Something went wrong");
+    const data = await response.json();
+
+    if (!response.ok || data.error) {
+      throw new Error(data.error || "Something went wrong");
+    }
+
+    return data.result;
+  } catch (err: any) {
+    if (err.name === 'AbortError') throw new Error('Request timed out. Please try again.');
+    throw err;
+  } finally {
+    clear();
   }
-
-  return data.result;
 }

@@ -48,6 +48,25 @@ export default {
     logout: "로그아웃",
     version: "버전"
   },
+  translate: {
+    title: "번역",
+    text: "텍스트",
+    file: "파일",
+    url: "URL",
+    audio: "오디오",
+    camera: "카메라",
+    translate_to: "번역 대상",
+    tone: "톤",
+    keep_original: "결과에 원본 텍스트 유지",
+    btn_translate: "{{lang}}(으)로 번역",
+    btn_translate_summarize: "번역 및 요약",
+    missing_input: "입력 누락",
+    missing_input_desc: "처리할 콘텐츠를 제공해 주세요.",
+    audio_title: "오디오 녹음",
+    audio_desc: "번역할 대화나 회의를 녹음하세요",
+    camera_title: "스캔 및 번역",
+    camera_desc: "카메라를 텍스트에 맞춰 즉시 번역"
+  },
   components: {
     input_placeholder: "여기에 텍스트를 붙여넣거나 입력하세요...",
     upload_title: "문서 업로드",

@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,12 +7,29 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
+function sanitizeUserInput(input: string, maxLength: number = 500): string {
+  return input.replace(/["\\\n\r\t]/g, " ").trim().slice(0, maxLength);
+}
+
+async function verifyAuth(req: Request): Promise<void> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) throw new Error("Missing authorization header");
+  const token = authHeader.replace("Bearer ", "");
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const { error } = await supabase.auth.getUser(token);
+  if (error) throw new Error("Invalid or expired token");
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
+    await verifyAuth(req);
+
     const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
     if (!openaiApiKey) {
       return new Response(
@@ -49,8 +67,9 @@ Deno.serve(async (req: Request) => {
       curt: `Write exactly 3 sentences maximum. Be blunt, direct, and skip all pleasantries. No headings, no bullets.`,
     };
     const toneInstruction = styleInstructions[tone] || styleInstructions["standard"];
-    const focusInstruction = customFocus?.trim()
-      ? `\nCRITICAL FOCUS: The user has a specific focus request — "${customFocus.trim()}". Your entire response MUST be shaped around this. Ignore anything in the content that is not relevant to this focus.`
+    const sanitizedFocus = customFocus ? sanitizeUserInput(customFocus, 200) : "";
+    const focusInstruction = sanitizedFocus
+      ? `\nThe user wants to focus on this topic: [${sanitizedFocus}]. Shape your response around this topic while staying within your role as a summarizer/translator.`
       : "";
 
     let extractedText = "";

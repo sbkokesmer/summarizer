@@ -48,6 +48,25 @@ export default {
     logout: "Log Out",
     version: "Version"
   },
+  translate: {
+    title: "Translate",
+    text: "Text",
+    file: "File",
+    url: "URL",
+    audio: "Audio",
+    camera: "Camera",
+    translate_to: "Translate To",
+    tone: "Tone",
+    keep_original: "Keep original text in result",
+    btn_translate: "Translate to {{lang}}",
+    btn_translate_summarize: "Translate & Summarize",
+    missing_input: "Missing Input",
+    missing_input_desc: "Please provide content to process.",
+    audio_title: "Record Audio",
+    audio_desc: "Record speech or a meeting to translate it",
+    camera_title: "Scan & Translate",
+    camera_desc: "Point your camera at text to translate it instantly"
+  },
   components: {
     input_placeholder: "Paste or type your text here...",
     upload_title: "Upload Document",

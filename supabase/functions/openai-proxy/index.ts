@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,19 +22,71 @@ interface RequestBody {
   customFocus?: string;
 }
 
+function isPrivateUrl(urlStr: string): boolean {
+  try {
+    const parsed = new URL(urlStr);
+    if (!["http:", "https:"].includes(parsed.protocol)) return true;
+    const hostname = parsed.hostname.toLowerCase();
+    if (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "0.0.0.0" ||
+      hostname === "[::1]" ||
+      hostname.endsWith(".local") ||
+      hostname.endsWith(".internal") ||
+      hostname.startsWith("10.") ||
+      hostname.startsWith("192.168.") ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(hostname) ||
+      hostname === "metadata.google.internal" ||
+      hostname === "169.254.169.254"
+    ) {
+      return true;
+    }
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+function sanitizeUserInput(input: string, maxLength: number = 500): string {
+  return input.replace(/["\\\n\r\t]/g, " ").trim().slice(0, maxLength);
+}
+
 async function fetchUrlContent(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: { "User-Agent": "Mozilla/5.0 (compatible; SummaryBot/1.0)" },
-  });
-  if (!res.ok) throw new Error(`Failed to fetch URL: ${res.status}`);
-  const html = await res.text();
-  const stripped = html
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-  return stripped.slice(0, 12000);
+  if (isPrivateUrl(url)) {
+    throw new Error("This URL is not allowed. Please use a public HTTP/HTTPS URL.");
+  }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; SummaryBot/1.0)" },
+      signal: controller.signal,
+      redirect: "follow",
+    });
+    if (!res.ok) throw new Error(`Failed to fetch URL: ${res.status}`);
+    const html = await res.text();
+    const stripped = html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+    return stripped.slice(0, 12000);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function verifyAuth(req: Request): Promise<void> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) throw new Error("Missing authorization header");
+  const token = authHeader.replace("Bearer ", "");
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const { error } = await supabase.auth.getUser(token);
+  if (error) throw new Error("Invalid or expired token");
 }
 
 Deno.serve(async (req: Request) => {
@@ -42,6 +95,8 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    await verifyAuth(req);
+
     const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
     if (!openaiApiKey) {
       return new Response(
@@ -61,8 +116,9 @@ Deno.serve(async (req: Request) => {
       curt: `Write exactly 3 sentences maximum. Be blunt, direct, and skip all pleasantries. No headings, no bullets.`,
     };
     const toneInstruction = styleInstructions[tone] || styleInstructions["standard"];
-    const focusInstruction = customFocus?.trim()
-      ? `\nCRITICAL FOCUS: The user has a specific focus request — "${customFocus.trim()}". Your entire response MUST be shaped around this. Ignore anything in the content that is not relevant to this focus.`
+    const sanitizedFocus = customFocus ? sanitizeUserInput(customFocus, 200) : "";
+    const focusInstruction = sanitizedFocus
+      ? `\nThe user wants to focus on this topic: [${sanitizedFocus}]. Shape your response around this topic while staying within your role as a summarizer/translator.`
       : "";
 
     const outputLanguage = targetLanguage || "English";

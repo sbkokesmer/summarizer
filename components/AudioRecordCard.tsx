@@ -7,8 +7,10 @@ import {
   Animated,
   Easing,
   Platform,
+  Modal,
+  Pressable,
 } from 'react-native';
-import { Mic, Square, Trash2, Play, Pause, Upload, Music } from 'lucide-react-native';
+import { Mic, Square, Trash2, Play, Pause, Upload, Music, ShieldCheck } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { Audio } from 'expo-av';
@@ -42,6 +44,7 @@ export function AudioRecordCard({
   const [state, setState] = useState<RecordState>('idle');
   const [elapsed, setElapsed] = useState(0);
   const [uploadedAudio, setUploadedAudio] = useState<SelectedAudio | null>(null);
+  const [showPermissionDialog, setShowPermissionDialog] = useState(false);
 
   const recordingRef = useRef<Audio.Recording | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -119,6 +122,19 @@ export function AudioRecordCard({
 
   const stopTimer = () => {
     if (timerRef.current) clearInterval(timerRef.current);
+  };
+
+  const handleRecordPress = () => {
+    if (state === 'idle') {
+      setShowPermissionDialog(true);
+      return;
+    }
+    handleRecord();
+  };
+
+  const handlePermissionAccept = () => {
+    setShowPermissionDialog(false);
+    handleRecord();
   };
 
   const handleRecord = async () => {
@@ -351,6 +367,28 @@ export function AudioRecordCard({
   const hasRecording = state === 'recorded' || state === 'playing';
 
   return (
+    <>
+    <Modal visible={showPermissionDialog} transparent animationType="fade" onRequestClose={() => setShowPermissionDialog(false)}>
+      <Pressable style={permStyles.backdrop} onPress={() => setShowPermissionDialog(false)}>
+        <Pressable style={[permStyles.dialog, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]} onPress={(e) => e.stopPropagation()}>
+          <View style={[permStyles.iconWrap, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }]}>
+            <ShieldCheck size={28} color={isDark ? '#FFFFFF' : '#000000'} />
+          </View>
+          <Text style={[permStyles.title, { color: isDark ? '#FFFFFF' : '#000000' }]}>Microphone Access</Text>
+          <Text style={[permStyles.body, { color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>
+            SummaLingua needs access to your microphone to record audio for summarization and translation. Audio recordings are stored only on your device and are sent securely for processing. They are never stored on our servers.
+          </Text>
+          <View style={permStyles.actions}>
+            <TouchableOpacity style={[permStyles.btn, permStyles.btnSecondary, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]} onPress={() => setShowPermissionDialog(false)} activeOpacity={0.7}>
+              <Text style={[permStyles.btnText, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }]}>Not Now</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[permStyles.btn, permStyles.btnPrimary, { backgroundColor: isDark ? '#FFFFFF' : '#000000' }]} onPress={handlePermissionAccept} activeOpacity={0.7}>
+              <Text style={[permStyles.btnText, { color: isDark ? '#000000' : '#FFFFFF', fontWeight: '600' }]}>Allow</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
     <View style={[styles.wrapper, { backgroundColor: colors.card, borderColor: isRecording ? accentColor : colors.border, borderWidth: isRecording ? 1.5 : 1, borderStyle: hasRecording || uploadedAudio ? 'solid' : isRecording ? 'solid' : 'dashed' }]}>
 
       {!hasRecording && !uploadedAudio && (
@@ -396,7 +434,7 @@ export function AudioRecordCard({
           </View>
         ) : (
           <View style={styles.idleContent}>
-            <TouchableOpacity onPress={handleRecord} disabled={disabled} activeOpacity={0.7} style={[styles.actionButton, { backgroundColor: accentColor }]}>
+            <TouchableOpacity onPress={handleRecordPress} disabled={disabled} activeOpacity={0.7} style={[styles.actionButton, { backgroundColor: accentColor }]}>
               <Mic size={28} color={colors.background} strokeWidth={1.8} />
             </TouchableOpacity>
             <Text style={[styles.idleTitle, { color: colors.text }]}>{title}</Text>
@@ -458,8 +496,69 @@ export function AudioRecordCard({
         </View>
       )}
     </View>
+    </>
   );
 }
+
+const permStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  dialog: {
+    borderRadius: 20,
+    padding: 28,
+    width: '100%',
+    maxWidth: 340,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  iconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center',
+    letterSpacing: -0.3,
+  },
+  body: {
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+  },
+  btn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  btnSecondary: {},
+  btnPrimary: {},
+  btnText: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+});
 
 const styles = StyleSheet.create({
   wrapper: { borderRadius: 20, marginBottom: 24, overflow: 'hidden' },

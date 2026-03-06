@@ -6,8 +6,10 @@ import {
   StyleSheet,
   Animated,
   Easing,
+  Modal,
+  Pressable,
 } from 'react-native';
-import { Camera, RefreshCw, CheckCircle, Upload, FileImage, Trash2 } from 'lucide-react-native';
+import { Camera, RefreshCw, CheckCircle, Upload, FileImage, Trash2, ShieldCheck } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { useTheme } from '@/context/ThemeContext';
@@ -40,6 +42,8 @@ export function CameraScanCard({
   const scanLineAnim = useRef(new Animated.Value(0)).current;
   const scanLoopRef = useRef<Animated.CompositeAnimation | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [showPermissionDialog, setShowPermissionDialog] = useState(false);
+  const [pendingPermission, setPendingPermission] = useState<'camera' | 'library' | null>(null);
 
   const startScanAnimation = () => {
     scanLineAnim.setValue(0);
@@ -64,8 +68,7 @@ export function CameraScanCard({
     Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
   };
 
-  const handleCameraCapture = async () => {
-    if (disabled) return;
+  const requestCameraAndCapture = async () => {
     setIsScanning(true);
     startScanAnimation();
     const { granted } = await ImagePicker.requestCameraPermissionsAsync();
@@ -87,8 +90,7 @@ export function CameraScanCard({
     showResult({ name: 'camera_scan.jpg', base64 });
   };
 
-  const handleUpload = async () => {
-    if (disabled) return;
+  const requestLibraryAndUpload = async () => {
     const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!granted) return;
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -101,6 +103,33 @@ export function CameraScanCard({
     const base64 = asset.base64 || await FileSystem.readAsStringAsync(asset.uri, { encoding: FileSystem.EncodingType.Base64 });
     const fileName = asset.fileName || `image_${Date.now()}.jpg`;
     showResult({ name: fileName, base64 });
+  };
+
+  const handleCameraCapture = () => {
+    if (disabled) return;
+    setPendingPermission('camera');
+    setShowPermissionDialog(true);
+  };
+
+  const handleUpload = () => {
+    if (disabled) return;
+    setPendingPermission('library');
+    setShowPermissionDialog(true);
+  };
+
+  const handlePermissionAccept = () => {
+    setShowPermissionDialog(false);
+    if (pendingPermission === 'camera') {
+      requestCameraAndCapture();
+    } else if (pendingPermission === 'library') {
+      requestLibraryAndUpload();
+    }
+    setPendingPermission(null);
+  };
+
+  const handlePermissionDecline = () => {
+    setShowPermissionDialog(false);
+    setPendingPermission(null);
   };
 
   const handleRemove = () => {
@@ -156,7 +185,34 @@ export function CameraScanCard({
     );
   }
 
+  const permissionTitle = pendingPermission === 'camera'
+    ? 'Camera Access'
+    : 'Photo Library Access';
+  const permissionBody = pendingPermission === 'camera'
+    ? 'SummaLingua needs access to your camera to scan documents and extract text. Images are processed locally on your device and sent securely for text recognition. They are never stored on our servers.'
+    : 'SummaLingua needs access to your photo library to select images for text extraction. Selected images are processed securely and are never stored on our servers after processing.';
+
   return (
+    <>
+    <Modal visible={showPermissionDialog} transparent animationType="fade" onRequestClose={handlePermissionDecline}>
+      <Pressable style={permStyles.backdrop} onPress={handlePermissionDecline}>
+        <Pressable style={[permStyles.dialog, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]} onPress={(e) => e.stopPropagation()}>
+          <View style={[permStyles.iconWrap, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' }]}>
+            <ShieldCheck size={28} color={isDark ? '#FFFFFF' : '#000000'} />
+          </View>
+          <Text style={[permStyles.title, { color: isDark ? '#FFFFFF' : '#000000' }]}>{permissionTitle}</Text>
+          <Text style={[permStyles.body, { color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>{permissionBody}</Text>
+          <View style={permStyles.actions}>
+            <TouchableOpacity style={[permStyles.btn, permStyles.btnSecondary, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]} onPress={handlePermissionDecline} activeOpacity={0.7}>
+              <Text style={[permStyles.btnText, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }]}>Not Now</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[permStyles.btn, permStyles.btnPrimary, { backgroundColor: isDark ? '#FFFFFF' : '#000000' }]} onPress={handlePermissionAccept} activeOpacity={0.7}>
+              <Text style={[permStyles.btnText, { color: isDark ? '#000000' : '#FFFFFF', fontWeight: '600' }]}>Allow</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
     <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, borderStyle: 'dashed' }]}>
       <View style={styles.modeTabs}>
         <TouchableOpacity
@@ -201,8 +257,69 @@ export function CameraScanCard({
         </TouchableOpacity>
       )}
     </View>
+    </>
   );
 }
+
+const permStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  dialog: {
+    borderRadius: 20,
+    padding: 28,
+    width: '100%',
+    maxWidth: 340,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  iconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center',
+    letterSpacing: -0.3,
+  },
+  body: {
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+  },
+  btn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  btnSecondary: {},
+  btnPrimary: {},
+  btnText: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+});
 
 const styles = StyleSheet.create({
   container: { borderRadius: 20, marginBottom: 24, overflow: 'hidden', minHeight: 140, justifyContent: 'center', alignItems: 'center' },

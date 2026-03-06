@@ -29,8 +29,15 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 
 const APP_LANGUAGES = [
-  { id: 'en', label: 'English', flag: 'EN' },
-  { id: 'tr', label: 'Turkce', flag: 'TR' },
+  { id: 'en', label: 'English', icon: '🇺🇸' },
+  { id: 'es', label: 'Spanish', icon: '🇪🇸' },
+  { id: 'fr', label: 'French', icon: '🇫🇷' },
+  { id: 'de', label: 'German', icon: '🇩🇪' },
+  { id: 'it', label: 'Italian', icon: '🇮🇹' },
+  { id: 'tr', label: 'Turkish', icon: '🇹🇷' },
+  { id: 'ja', label: 'Japanese', icon: '🇯🇵' },
+  { id: 'ko', label: 'Korean', icon: '🇰🇷' },
+  { id: 'zh', label: 'Chinese', icon: '🇨🇳' },
 ];
 
 export default function SettingsScreen() {
@@ -100,7 +107,7 @@ export default function SettingsScreen() {
               </View>
               <View style={styles.rowRight}>
                 <Text style={[styles.rowValue, { color: colors.textSecondary }]}>
-                  {i18n.language === 'en' ? 'English' : 'Turkce'}
+                  {APP_LANGUAGES.find(l => l.id === i18n.language)?.label || 'English'}
                 </Text>
                 <ChevronRight size={20} color={colors.textSecondary} />
               </View>
@@ -234,36 +241,36 @@ export default function SettingsScreen() {
               {t('settings.language')}
             </Text>
 
-            <View style={styles.langList}>
-              {APP_LANGUAGES.map((lang, index) => {
-                const isSelected = i18n.language === lang.id;
-                return (
-                  <React.Fragment key={lang.id}>
-                    <TouchableOpacity
-                      style={styles.langRow}
-                      onPress={() => selectLanguage(lang.id)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.langLeft}>
-                        <View style={styles.langFlag}>
-                          <Text style={styles.langFlagText}>{lang.flag}</Text>
+            <ScrollView style={styles.langScroll} showsVerticalScrollIndicator={false}>
+              <View style={styles.langList}>
+                {APP_LANGUAGES.map((lang, index) => {
+                  const isSelected = i18n.language === lang.id;
+                  return (
+                    <React.Fragment key={lang.id}>
+                      <TouchableOpacity
+                        style={styles.langRow}
+                        onPress={() => selectLanguage(lang.id)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.langLeft}>
+                          <Text style={styles.langIcon}>{lang.icon}</Text>
+                          <Text
+                            style={[
+                              styles.langLabel,
+                              isSelected && styles.langLabelSelected,
+                            ]}
+                          >
+                            {lang.label}
+                          </Text>
                         </View>
-                        <Text
-                          style={[
-                            styles.langLabel,
-                            isSelected && styles.langLabelSelected,
-                          ]}
-                        >
-                          {lang.label}
-                        </Text>
-                      </View>
-                      {isSelected && <Check size={20} color="#FFFFFF" strokeWidth={2.5} />}
-                    </TouchableOpacity>
-                    {index < APP_LANGUAGES.length - 1 && <View style={styles.langSeparator} />}
-                  </React.Fragment>
-                );
-              })}
-            </View>
+                        {isSelected && <Check size={20} color="#FFFFFF" strokeWidth={2.5} />}
+                      </TouchableOpacity>
+                      {index < APP_LANGUAGES.length - 1 && <View style={styles.langSeparator} />}
+                    </React.Fragment>
+                  );
+                })}
+              </View>
+            </ScrollView>
           </BlurView>
         </View>
       </Modal>
@@ -393,6 +400,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     letterSpacing: -0.4,
   },
+  langScroll: {
+    maxHeight: 420,
+  },
   langList: {
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderRadius: 16,
@@ -411,19 +421,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  langFlag: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  langFlagText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.8)',
-    letterSpacing: 0.5,
+  langIcon: {
+    fontSize: 22,
   },
   langLabel: {
     fontSize: 17,

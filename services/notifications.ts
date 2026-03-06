@@ -1,6 +1,5 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Notifications from 'expo-notifications';
 
 const NOTIF_KEY = '@notification_prefs';
 
@@ -12,13 +11,18 @@ const DEFAULT_PREFS: NotificationPrefs = {
   summaryReady: true,
 };
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+let Notifications: typeof import('expo-notifications') | null = null;
+
+if (Platform.OS !== 'web') {
+  Notifications = require('expo-notifications');
+  Notifications!.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+}
 
 export async function getNotificationPrefs(): Promise<NotificationPrefs> {
   try {
@@ -36,6 +40,7 @@ export async function getPermissionStatus(): Promise<'granted' | 'denied' | 'und
     return 'undetermined';
   }
 
+  if (!Notifications) return 'denied';
   const { status } = await Notifications.getPermissionsAsync();
   if (status === 'granted') return 'granted';
   if (status === 'denied') return 'denied';
@@ -51,6 +56,7 @@ export async function requestPermission(): Promise<boolean> {
     return result === 'granted';
   }
 
+  if (!Notifications) return false;
   const { status: existing } = await Notifications.getPermissionsAsync();
   if (existing === 'granted') return true;
 
@@ -74,6 +80,7 @@ export async function notifySummaryReady(title: string, body: string) {
     return;
   }
 
+  if (!Notifications) return;
   const { status } = await Notifications.getPermissionsAsync();
   if (status !== 'granted') return;
 

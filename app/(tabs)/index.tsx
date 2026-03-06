@@ -22,6 +22,7 @@ import { SummaryStyleSheet, SUMMARY_STYLES } from '@/components/SummaryStyleShee
 import { PrivacyBadge } from '@/components/PrivacyBadge';
 import { callOpenAI } from '@/services/openai';
 import { saveHistoryItem, InputType } from '@/services/historyStore';
+import { notifySummaryReady } from '@/services/notifications';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -167,6 +168,10 @@ export default function SummarizeScreen() {
 
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setResult(response);
+      notifySummaryReady(
+        isTranslating ? t('summarize.btn_summarize_translate') : t('summarize.btn_summarize'),
+        response.replace(/[#*_`]/g, '').slice(0, 120)
+      );
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
     } finally {

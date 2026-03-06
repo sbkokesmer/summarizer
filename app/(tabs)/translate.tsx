@@ -20,6 +20,7 @@ import { ToneSelectionSheet, TONES } from '@/components/ToneSelectionSheet';
 import { PrivacyBadge } from '@/components/PrivacyBadge';
 import { callOpenAI } from '@/services/openai';
 import { saveHistoryItem, InputType } from '@/services/historyStore';
+import { notifySummaryReady } from '@/services/notifications';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -156,6 +157,10 @@ export default function TranslateScreen() {
 
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setResult(response);
+      notifySummaryReady(
+        actionLabel,
+        response.replace(/[#*_`]/g, '').slice(0, 120)
+      );
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
     } finally {

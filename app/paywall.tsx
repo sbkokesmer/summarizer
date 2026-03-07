@@ -260,7 +260,7 @@ export default function PaywallScreen() {
       >
         <View style={styles.bottomContent}>
           <PrimaryButton
-            title={selectedPlan === 'annual' ? 'Start Free Trial' : 'Subscribe Now'}
+            title="Subscribe Now"
             onPress={handleSubscribe}
             isLoading={isLoading || isLoadingPurchases}
           />

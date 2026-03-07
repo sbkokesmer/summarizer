@@ -29,6 +29,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
 import { exportToPdf } from '@/services/pdfExport';
 import { FadeInView } from '@/components/FadeInView';
 import { SwipeTabView } from '@/components/SwipeTabView';
@@ -45,6 +46,7 @@ const INPUT_ICON: Record<InputType, { icon: typeof FileText; color: string }> = 
 export default function HistoryScreen() {
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
 
   const [items, setItems] = useState<HistoryItem[]>([]);
@@ -53,8 +55,8 @@ export default function HistoryScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadHistory().then(setItems);
-    }, [])
+      if (user) loadHistory(user.id).then(setItems);
+    }, [user])
   );
 
   const filteredItems = items.filter(
@@ -65,7 +67,8 @@ export default function HistoryScreen() {
   );
 
   const handleDelete = (id: string) => {
-    deleteHistoryItem(id).then(() => {
+    if (!user) return;
+    deleteHistoryItem(user.id, id).then(() => {
       setItems((prev) => prev.filter((i) => i.id !== id));
       if (selected?.id === id) setSelected(null);
     });
@@ -81,7 +84,8 @@ export default function HistoryScreen() {
           text: t('history.clear_confirm'),
           style: 'destructive',
           onPress: () => {
-            clearHistory().then(() => setItems([]));
+            if (!user) return;
+            clearHistory(user.id).then(() => setItems([]));
           },
         },
       ]

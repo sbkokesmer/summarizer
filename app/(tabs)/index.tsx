@@ -26,6 +26,7 @@ import { callOpenAI } from '@/services/openai';
 import { saveHistoryItem, InputType } from '@/services/historyStore';
 import { notifySummaryReady } from '@/services/notifications';
 import { usePurchases } from '@/context/PurchasesContext';
+import { useAuth } from '@/context/AuthContext';
 import { FREE_LIMIT } from '@/services/usageStore';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -38,6 +39,7 @@ export default function SummarizeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { isPro, remainingFreeUses, canUse, consumeUsage } = usePurchases();
+  const { user } = useAuth();
 
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -176,12 +178,14 @@ export default function SummarizeScreen() {
         ? `Summarized & Translated (${selectedLang.label})`
         : `Summarized · ${selectedTone.label}`;
 
-      saveHistoryItem({
-        inputType: inputTypeMap[inputTypeIndex],
-        title,
-        result: response,
-        action: actionLabel,
-      });
+      if (user) {
+        saveHistoryItem(user.id, {
+          inputType: inputTypeMap[inputTypeIndex],
+          title,
+          result: response,
+          action: actionLabel,
+        });
+      }
 
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setResult(response);

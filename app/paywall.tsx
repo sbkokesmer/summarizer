@@ -5,7 +5,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Platform
+  Platform,
+  Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -14,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useTheme } from '@/context/ThemeContext';
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { usePurchases } from '@/context/PurchasesContext';
 
 const FEATURES = [
   {
@@ -46,45 +48,96 @@ export default function PaywallScreen() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { currentOffering, purchasePackage, restorePurchases, isLoadingPurchases } = usePurchases();
 
   const [selectedPlan, setSelectedPlan] = useState<'annual' | 'monthly'>('annual');
   const [isLoading, setIsLoading] = useState(false);
+  const [restoreLoading, setRestoreLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleSubscribe = () => {
+  const annualPackage = currentOffering?.annual ?? currentOffering?.availablePackages?.find(
+    (p: any) => p.packageType === 'ANNUAL'
+  );
+  const monthlyPackage = currentOffering?.monthly ?? currentOffering?.availablePackages?.find(
+    (p: any) => p.packageType === 'MONTHLY'
+  );
+
+  const annualPrice = annualPackage?.product?.priceString ?? '$29.99';
+  const monthlyPrice = monthlyPackage?.product?.priceString ?? '$4.99';
+
+  const annualMonthly = annualPackage
+    ? `Just ${(annualPackage.product.price / 12).toLocaleString('en-US', { style: 'currency', currency: annualPackage.product.currencyCode ?? 'USD', minimumFractionDigits: 2 })} / month`
+    : 'Just $2.49 / month';
+
+  const handleSubscribe = async () => {
+    setErrorMessage(null);
+    const pkg = selectedPlan === 'annual' ? annualPackage : monthlyPackage;
+
+    if (!pkg) {
+      if (Platform.OS === 'web') {
+        setErrorMessage('In-app purchases are not available on web. Please use the iOS or Android app.');
+        return;
+      }
+      setErrorMessage('Products are loading, please try again.');
+      return;
+    }
+
     setIsLoading(true);
-    // Simulate purchase process
-    setTimeout(() => {
-      setIsLoading(false);
+    const { success, error } = await purchasePackage(pkg);
+    setIsLoading(false);
+
+    if (error) {
+      setErrorMessage(error);
+      return;
+    }
+
+    if (success) {
       router.back();
-    }, 1500);
+    }
   };
 
-  // Premium subtle gradients
-  const backgroundGradient = isDark 
-    ? ['#000000', '#111111', '#000000'] 
+  const handleRestore = async () => {
+    setErrorMessage(null);
+    setRestoreLoading(true);
+    const { success, error } = await restorePurchases();
+    setRestoreLoading(false);
+
+    if (error) {
+      setErrorMessage(error);
+      return;
+    }
+
+    if (success) {
+      router.back();
+    } else {
+      setErrorMessage('No active subscription found.');
+    }
+  };
+
+  const backgroundGradient: [string, string, string] = isDark
+    ? ['#000000', '#111111', '#000000']
     : ['#FFFFFF', '#F8F8F8', '#FFFFFF'];
 
   return (
     <View style={styles.root}>
-      <LinearGradient 
-        colors={backgroundGradient} 
+      <LinearGradient
+        colors={backgroundGradient}
         style={StyleSheet.absoluteFill}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 180 }
+          { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 180 },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity 
-            style={[styles.closeButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]} 
+          <TouchableOpacity
+            style={[styles.closeButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}
             onPress={() => router.back()}
             activeOpacity={0.7}
           >
@@ -92,7 +145,6 @@ export default function PaywallScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Hero Section */}
         <View style={styles.hero}>
           <View style={[styles.iconContainer, { backgroundColor: colors.text }]}>
             <Sparkles size={32} color={colors.background} strokeWidth={1.5} />
@@ -103,7 +155,6 @@ export default function PaywallScreen() {
           </Text>
         </View>
 
-        {/* Features List */}
         <View style={styles.featuresContainer}>
           {FEATURES.map((feature) => {
             const Icon = feature.icon;
@@ -121,16 +172,15 @@ export default function PaywallScreen() {
           })}
         </View>
 
-        {/* Plan Selection */}
         <View style={styles.plansContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
-              styles.planCard, 
-              { 
+              styles.planCard,
+              {
                 backgroundColor: selectedPlan === 'annual' ? (isDark ? '#1C1C1E' : '#F2F2F7') : 'transparent',
                 borderColor: selectedPlan === 'annual' ? colors.text : (isDark ? '#333' : '#E5E5EA'),
                 borderWidth: selectedPlan === 'annual' ? 2 : 1,
-              }
+              },
             ]}
             activeOpacity={0.8}
             onPress={() => setSelectedPlan('annual')}
@@ -141,9 +191,12 @@ export default function PaywallScreen() {
                 <Text style={[styles.badgeText, { color: colors.background }]}>Save 50%</Text>
               </View>
             </View>
-            <Text style={[styles.planPrice, { color: colors.text }]}>$29.99<Text style={styles.planPeriod}> / year</Text></Text>
-            <Text style={[styles.planEquivalent, { color: colors.textSecondary }]}>Just $2.49 / month</Text>
-            
+            <Text style={[styles.planPrice, { color: colors.text }]}>
+              {annualPrice}
+              <Text style={styles.planPeriod}> / year</Text>
+            </Text>
+            <Text style={[styles.planEquivalent, { color: colors.textSecondary }]}>{annualMonthly}</Text>
+
             {selectedPlan === 'annual' && (
               <View style={styles.checkIcon}>
                 <CheckCircle2 size={20} color={colors.text} />
@@ -151,21 +204,24 @@ export default function PaywallScreen() {
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
-              styles.planCard, 
-              { 
+              styles.planCard,
+              {
                 backgroundColor: selectedPlan === 'monthly' ? (isDark ? '#1C1C1E' : '#F2F2F7') : 'transparent',
                 borderColor: selectedPlan === 'monthly' ? colors.text : (isDark ? '#333' : '#E5E5EA'),
                 borderWidth: selectedPlan === 'monthly' ? 2 : 1,
-              }
+              },
             ]}
             activeOpacity={0.8}
             onPress={() => setSelectedPlan('monthly')}
           >
             <Text style={[styles.planName, { color: colors.text }]}>Monthly</Text>
-            <Text style={[styles.planPrice, { color: colors.text }]}>$4.99<Text style={styles.planPeriod}> / month</Text></Text>
-            
+            <Text style={[styles.planPrice, { color: colors.text }]}>
+              {monthlyPrice}
+              <Text style={styles.planPeriod}> / month</Text>
+            </Text>
+
             {selectedPlan === 'monthly' && (
               <View style={styles.checkIcon}>
                 <CheckCircle2 size={20} color={colors.text} />
@@ -174,34 +230,38 @@ export default function PaywallScreen() {
           </TouchableOpacity>
         </View>
 
+        {errorMessage && (
+          <Text style={styles.errorText}>{errorMessage}</Text>
+        )}
       </ScrollView>
 
-      {/* Floating Bottom Action Area */}
-      <BlurView 
-        intensity={80} 
-        tint={isDark ? 'dark' : 'light'} 
+      <BlurView
+        intensity={80}
+        tint={isDark ? 'dark' : 'light'}
         style={[
           styles.bottomBlur,
-          { paddingBottom: insets.bottom > 0 ? insets.bottom : 24 }
+          { paddingBottom: insets.bottom > 0 ? insets.bottom : 24 },
         ]}
       >
         <View style={styles.bottomContent}>
-          <PrimaryButton 
-            title={selectedPlan === 'annual' ? "Start Free Trial" : "Subscribe Now"} 
+          <PrimaryButton
+            title={selectedPlan === 'annual' ? 'Start Free Trial' : 'Subscribe Now'}
             onPress={handleSubscribe}
-            isLoading={isLoading}
+            isLoading={isLoading || isLoadingPurchases}
           />
-          
+
           <View style={styles.footerLinks}>
-            <TouchableOpacity onPress={() => {}}>
+            <TouchableOpacity onPress={() => router.push('/privacy-policy')}>
               <Text style={[styles.footerText, { color: colors.textSecondary }]}>Terms</Text>
             </TouchableOpacity>
             <Text style={[styles.footerDot, { color: colors.textSecondary }]}>•</Text>
-            <TouchableOpacity onPress={() => {}}>
-              <Text style={[styles.footerText, { color: colors.textSecondary }]}>Restore</Text>
+            <TouchableOpacity onPress={handleRestore} disabled={restoreLoading}>
+              <Text style={[styles.footerText, { color: colors.textSecondary }]}>
+                {restoreLoading ? 'Restoring...' : 'Restore'}
+              </Text>
             </TouchableOpacity>
             <Text style={[styles.footerDot, { color: colors.textSecondary }]}>•</Text>
-            <TouchableOpacity onPress={() => {}}>
+            <TouchableOpacity onPress={() => router.push('/privacy-policy')}>
               <Text style={[styles.footerText, { color: colors.textSecondary }]}>Privacy</Text>
             </TouchableOpacity>
           </View>
@@ -335,6 +395,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 20,
     right: 20,
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 16,
+    paddingHorizontal: 8,
   },
   bottomBlur: {
     position: 'absolute',

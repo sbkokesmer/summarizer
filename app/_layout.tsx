@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
+import { PurchasesProvider } from '@/context/PurchasesContext';
 import '../i18n';
 
 function AuthGuard() {
@@ -107,7 +108,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <AppNavigator />
+        <PurchasesProvider>
+          <AppNavigator />
+        </PurchasesProvider>
       </AuthProvider>
     </ThemeProvider>
   );

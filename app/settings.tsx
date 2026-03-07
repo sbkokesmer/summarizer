@@ -27,6 +27,7 @@ import {
 } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
+import { usePurchases } from '@/context/PurchasesContext';
 
 const APP_LANGUAGES = [
   { id: 'en', label: 'English', icon: '🇺🇸' },
@@ -45,6 +46,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { signOut } = useAuth();
   const { colors, isDark, themeMode, setThemeMode } = useTheme();
+  const { isPro } = usePurchases();
   const insets = useSafeAreaInsets();
 
   const [languageSheetVisible, setLanguageSheetVisible] = useState(false);
@@ -72,20 +74,32 @@ export default function SettingsScreen() {
         style={[styles.container, { backgroundColor: colors.background }]}
         showsVerticalScrollIndicator={false}
       >
-        <TouchableOpacity
-          style={styles.premiumBanner}
-          onPress={() => router.push('/paywall')}
-          activeOpacity={0.8}
-        >
-          <View style={styles.premiumContent}>
-            <Crown size={24} color="#FFFFFF" />
-            <View style={styles.premiumTextContainer}>
-              <Text style={styles.premiumTitle}>{t('settings.upgrade')}</Text>
-              <Text style={styles.premiumSubtitle}>{t('settings.upgrade_desc')}</Text>
+        {!isPro ? (
+          <TouchableOpacity
+            style={styles.premiumBanner}
+            onPress={() => router.push('/paywall')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.premiumContent}>
+              <Crown size={24} color="#FFFFFF" />
+              <View style={styles.premiumTextContainer}>
+                <Text style={styles.premiumTitle}>{t('settings.upgrade')}</Text>
+                <Text style={styles.premiumSubtitle}>{t('settings.upgrade_desc')}</Text>
+              </View>
+            </View>
+            <ChevronRight size={20} color="rgba(255,255,255,0.5)" />
+          </TouchableOpacity>
+        ) : (
+          <View style={[styles.premiumBanner, styles.proBanner]}>
+            <View style={styles.premiumContent}>
+              <Crown size={24} color="#FFD700" />
+              <View style={styles.premiumTextContainer}>
+                <Text style={styles.premiumTitle}>Pro Active</Text>
+                <Text style={styles.premiumSubtitle}>You have access to all premium features.</Text>
+              </View>
             </View>
           </View>
-          <ChevronRight size={20} color="rgba(255,255,255,0.5)" />
-        </TouchableOpacity>
+        )}
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
@@ -295,6 +309,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
+  },
+  proBanner: {
+    backgroundColor: '#1A1A1A',
+    borderWidth: 1,
+    borderColor: 'rgba(255,215,0,0.3)',
   },
   premiumContent: {
     flexDirection: 'row',

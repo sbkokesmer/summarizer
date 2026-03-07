@@ -36,6 +36,7 @@ function SmartDock({ state, descriptors, navigation }: any) {
               borderColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)',
             }
           ]}
+          pointerEvents="box-none"
         >
           <BlurView
             intensity={isDark ? 25 : 35}
@@ -47,7 +48,7 @@ function SmartDock({ state, descriptors, navigation }: any) {
             pointerEvents="none"
           />
 
-          <View style={styles.dockInner} pointerEvents="box-none">
+          <View style={styles.dockInner}>
             {state.routes.map((route: any, index: number) => {
               const isFocused = state.index === index;
 

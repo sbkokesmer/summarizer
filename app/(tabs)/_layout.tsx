@@ -44,6 +44,7 @@ function SmartDock({ state, descriptors, navigation }: any) {
               StyleSheet.absoluteFill,
               { backgroundColor: isDark ? 'rgba(28,28,30,0.4)' : 'rgba(255,255,255,0.4)' }
             ]}
+            pointerEvents="none"
           />
 
           <View style={styles.dockInner} pointerEvents="box-none">

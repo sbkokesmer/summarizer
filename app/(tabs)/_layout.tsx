@@ -19,16 +19,16 @@ function SmartDock({ state, descriptors, navigation }: any) {
   ];
 
   return (
-    <View style={styles.dockWrapper}>
+    <View style={styles.dockWrapper} pointerEvents="box-none">
       {/* Soft fade gradient from content into dock area */}
       <LinearGradient
         colors={fadeColors}
         style={[styles.fadeGradient, { height: insets.bottom + 120 }]}
         pointerEvents="none"
       />
-      
+
       {/* Floating Dock */}
-      <View style={[styles.dockContainer, { paddingBottom: Platform.OS === 'ios' ? insets.bottom : 24 }]}>
+      <View style={[styles.dockContainer, { paddingBottom: Platform.OS === 'ios' ? insets.bottom : 24 }]} pointerEvents="box-none">
         <BlurView
           intensity={isDark ? 25 : 35}
           tint={isDark ? 'dark' : 'light'}

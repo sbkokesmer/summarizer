@@ -206,10 +206,17 @@ export default function PaywallScreen() {
                 <Text style={[styles.badgeText, { color: colors.background }]}>Save 50%</Text>
               </View>
             </View>
-            <Text style={[styles.planPrice, { color: colors.text }]}>
-              {annualPrice}
-              <Text style={styles.planPeriod}> / year</Text>
-            </Text>
+            <View style={styles.planPriceRow}>
+              <Text style={[styles.planPrice, { color: colors.text }]}>
+                {annualPrice}
+                <Text style={styles.planPeriod}> / year</Text>
+              </Text>
+              <Text style={[styles.planOriginalPrice, { color: colors.textSecondary }]}>
+                {annualPackage
+                  ? (annualPackage.product.price * 2).toLocaleString('en-US', { style: 'currency', currency: annualPackage.product.currencyCode ?? 'USD', minimumFractionDigits: 2 })
+                  : '$59.99'}
+              </Text>
+            </View>
             <Text style={[styles.planEquivalent, { color: colors.textSecondary }]}>{annualMonthly}</Text>
 
             {selectedPlan === 'annual' && (
@@ -428,6 +435,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     opacity: 0.6,
+  },
+  planPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
+  },
+  planOriginalPrice: {
+    fontSize: 15,
+    fontWeight: '500',
+    textDecorationLine: 'line-through',
+    opacity: 0.5,
   },
   planEquivalent: {
     fontSize: 14,

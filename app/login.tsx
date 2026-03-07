@@ -19,6 +19,7 @@ import { PrimaryButton } from '@/components/PrimaryButton';
 import { FadeInView } from '@/components/FadeInView';
 import { LanguageSelectionSheet, LANGUAGES } from '@/components/LanguageSelectionSheet';
 import { useAuth } from '@/context/AuthContext';
+import * as AppleAuthentication from 'expo-apple-authentication';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -31,7 +32,7 @@ export default function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
-  const { signInWithEmail, signUpWithEmail } = useAuth();
+  const { signInWithEmail, signUpWithEmail, signInWithApple } = useAuth();
 
   const [step, setStep] = useState<Step>('welcome');
   const [emailMode, setEmailMode] = useState<EmailMode>('signin');
@@ -80,6 +81,20 @@ export default function LoginScreen() {
     changeStep('onboarding');
   };
 
+  const handleAppleSignIn = async () => {
+    setIsLoading(true);
+    setAuthError(null);
+    const result = await signInWithApple();
+    setIsLoading(false);
+    if (result.error) {
+      setAuthError(result.error);
+      return;
+    }
+    if (result.error === null) {
+      changeStep('onboarding');
+    }
+  };
+
   const handleCompleteOnboarding = () => {
     router.replace('/(tabs)');
   };
@@ -120,6 +135,18 @@ export default function LoginScreen() {
               </View>
 
               <View style={styles.actionContainer}>
+                {Platform.OS === 'ios' && (
+                  <AppleAuthentication.AppleAuthenticationButton
+                    buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                    buttonStyle={isDark
+                      ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+                      : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                    cornerRadius={20}
+                    style={styles.appleButton}
+                    onPress={handleAppleSignIn}
+                  />
+                )}
+
                 <TouchableOpacity
                   style={[styles.emailButton, { backgroundColor: colors.card, borderColor: colors.border }]}
                   onPress={() => changeStep('email')}
@@ -345,6 +372,10 @@ const styles = StyleSheet.create({
   },
   actionContainer: {
     gap: 16,
+  },
+  appleButton: {
+    height: 56,
+    width: '100%',
   },
   emailButton: {
     flexDirection: 'row',

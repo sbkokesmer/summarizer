@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 
@@ -8,6 +9,7 @@ interface AuthContextType {
   isLoading: boolean;
   signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
   signUpWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
+  signInWithApple: () => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -55,6 +57,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: null };
   };
 
+  const signInWithApple = async (): Promise<{ error: string | null }> => {
+    if (Platform.OS !== 'ios') {
+      return { error: 'Apple Sign In is only available on iOS.' };
+    }
+
+    try {
+      const AppleAuthentication = await import('expo-apple-authentication');
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      if (!credential.identityToken) {
+        return { error: 'Apple Sign In failed. No identity token received.' };
+      }
+
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: credential.identityToken,
+      });
+
+      if (error) return { error: error.message };
+      return { error: null };
+    } catch (e: any) {
+      if (e.code === 'ERR_REQUEST_CANCELED') {
+        return { error: null };
+      }
+      return { error: e.message ?? 'Apple Sign In failed.' };
+    }
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
   };
@@ -66,6 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       signInWithEmail,
       signUpWithEmail,
+      signInWithApple,
       signOut,
     }}>
       {children}

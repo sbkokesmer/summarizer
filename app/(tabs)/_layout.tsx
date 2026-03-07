@@ -17,7 +17,7 @@ function TabBar({ state, navigation }: any) {
   const activePillBg = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.07)';
 
   return (
-    <View style={[styles.wrapper, { paddingBottom: insets.bottom }]}>
+    <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 32) }]}>
       <View style={[styles.island, { backgroundColor: islandBg }]}>
         {state.routes.map((route: any, index: number) => {
           const isFocused = state.index === index;

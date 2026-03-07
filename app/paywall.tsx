@@ -16,6 +16,7 @@ import { BlurView } from 'expo-blur';
 import { useTheme } from '@/context/ThemeContext';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { usePurchases } from '@/context/PurchasesContext';
+import { FREE_LIMIT } from '@/services/usageStore';
 
 const FEATURES = [
   {
@@ -48,7 +49,7 @@ export default function PaywallScreen() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { currentOffering, purchasePackage, restorePurchases, isLoadingPurchases } = usePurchases();
+  const { currentOffering, purchasePackage, restorePurchases, isLoadingPurchases, usageCount, remainingFreeUses } = usePurchases();
 
   const [selectedPlan, setSelectedPlan] = useState<'annual' | 'monthly'>('annual');
   const [isLoading, setIsLoading] = useState(false);
@@ -153,6 +154,18 @@ export default function PaywallScreen() {
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Experience the full power of AI for your documents. Work faster, smarter, and without limits.
           </Text>
+
+          <View style={[styles.usageIndicator, { backgroundColor: isDark ? '#1C1C1E' : '#F2F2F7' }]}>
+            <Text style={[styles.usageLabel, { color: colors.textSecondary }]}>Free uses</Text>
+            <View style={styles.usageDots}>
+              {Array.from({ length: FREE_LIMIT }).map((_, i) => (
+                <View key={i} style={[styles.usageDot, { backgroundColor: i < remainingFreeUses ? '#34C759' : (isDark ? '#333' : '#D1D1D6') }]} />
+              ))}
+            </View>
+            <Text style={[styles.usageCount, { color: remainingFreeUses === 0 ? '#FF3B30' : colors.text }]}>
+              {remainingFreeUses === 0 ? 'All used' : `${remainingFreeUses} left`}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.featuresContainer}>
@@ -296,6 +309,33 @@ const styles = StyleSheet.create({
   hero: {
     alignItems: 'center',
     marginBottom: 48,
+  },
+  usageIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  usageLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  usageDots: {
+    flexDirection: 'row',
+    gap: 5,
+    flex: 1,
+  },
+  usageDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  usageCount: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   iconContainer: {
     width: 64,

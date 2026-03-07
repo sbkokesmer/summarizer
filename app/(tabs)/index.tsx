@@ -2,8 +2,9 @@ import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, Alert, Animated, LayoutAnimation, UIManager, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Globe, ChevronDown, Sparkles } from 'lucide-react-native';
+import { Globe, ChevronDown, Sparkles, Zap } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
+import { useRouter } from 'expo-router';
 import { useTheme } from '@/context/ThemeContext';
 import { AppIdentityBadge } from '@/components/AppIdentityBadge';
 import { SegmentedControl } from '@/components/SegmentedControl';
@@ -23,6 +24,8 @@ import { PrivacyBadge } from '@/components/PrivacyBadge';
 import { callOpenAI } from '@/services/openai';
 import { saveHistoryItem, InputType } from '@/services/historyStore';
 import { notifySummaryReady } from '@/services/notifications';
+import { usePurchases } from '@/context/PurchasesContext';
+import { FREE_LIMIT } from '@/services/usageStore';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -32,6 +35,8 @@ export default function SummarizeScreen() {
   const { t } = useTranslation();
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { isPro, remainingFreeUses, canUse, consumeUsage } = usePurchases();
 
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -108,6 +113,17 @@ export default function SummarizeScreen() {
   const executeAction = async () => {
     if (!checkInput()) {
       Alert.alert(t('summarize.missing_input'), t('summarize.missing_input_desc'));
+      return;
+    }
+
+    if (!canUse) {
+      router.push('/paywall');
+      return;
+    }
+
+    const allowed = await consumeUsage();
+    if (!allowed) {
+      router.push('/paywall');
       return;
     }
 
@@ -194,6 +210,30 @@ export default function SummarizeScreen() {
           scrollEventThrottle={16}
         >
           <AppIdentityBadge title={t('summarize.title')} />
+
+          {!isPro && (
+            <View style={styles.paddingHorizontal}>
+              <TouchableOpacity
+                style={[styles.usageBanner, { backgroundColor: remainingFreeUses === 0 ? '#FF3B3015' : colors.card, borderColor: remainingFreeUses === 0 ? '#FF3B30' : colors.border }]}
+                onPress={() => router.push('/paywall')}
+                activeOpacity={0.8}
+              >
+                <Zap size={14} color={remainingFreeUses === 0 ? '#FF3B30' : colors.textSecondary} strokeWidth={2} />
+                <Text style={[styles.usageBannerText, { color: remainingFreeUses === 0 ? '#FF3B30' : colors.textSecondary }]}>
+                  {remainingFreeUses === 0
+                    ? 'Free limit reached — Upgrade to Pro for unlimited use'
+                    : `${remainingFreeUses} of ${FREE_LIMIT} free summaries remaining`}
+                </Text>
+                {remainingFreeUses > 0 && (
+                  <View style={styles.usageDots}>
+                    {Array.from({ length: FREE_LIMIT }).map((_, i) => (
+                      <View key={i} style={[styles.usageDot, { backgroundColor: i < remainingFreeUses ? '#34C759' : colors.border }]} />
+                    ))}
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
 
           <View style={styles.paddingHorizontal}>
             <SegmentedControl options={INPUT_TYPES} selectedIndex={inputTypeIndex} onChange={handleInputTypeChange} disabled={isLoading} />
@@ -347,4 +387,8 @@ const styles = StyleSheet.create({
   divider: { height: StyleSheet.hairlineWidth, width: '100%', marginBottom: 24 },
   errorBox: { borderWidth: 1, borderRadius: 12, padding: 14, marginTop: 12 },
   errorText: { color: '#FF3B30', fontSize: 14, lineHeight: 20 },
+  usageBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 12 },
+  usageBannerText: { fontSize: 13, flex: 1, fontWeight: '500' },
+  usageDots: { flexDirection: 'row', gap: 4 },
+  usageDot: { width: 8, height: 8, borderRadius: 4 },
 });

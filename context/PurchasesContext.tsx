@@ -1,11 +1,16 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { Platform } from 'react-native';
 import { REVENUECAT_API_KEY, ENTITLEMENT_ID } from '@/services/revenuecat';
+import { getUsageCount, incrementUsage, FREE_LIMIT } from '@/services/usageStore';
 
 interface PurchasesContextType {
   isPro: boolean;
   isLoadingPurchases: boolean;
   currentOffering: any | null;
+  usageCount: number;
+  remainingFreeUses: number;
+  canUse: boolean;
+  consumeUsage: () => Promise<boolean>;
   purchasePackage: (pkg: any) => Promise<{ success: boolean; error: string | null }>;
   restorePurchases: () => Promise<{ success: boolean; error: string | null }>;
   refreshPurchaserInfo: () => Promise<void>;
@@ -18,10 +23,17 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
   const [isLoadingPurchases, setIsLoadingPurchases] = useState(true);
   const [currentOffering, setCurrentOffering] = useState<any | null>(null);
   const [Purchases, setPurchases] = useState<any>(null);
+  const [usageCount, setUsageCount] = useState(0);
 
   useEffect(() => {
     initRevenueCat();
+    loadUsage();
   }, []);
+
+  const loadUsage = async () => {
+    const count = await getUsageCount();
+    setUsageCount(count);
+  };
 
   const initRevenueCat = async () => {
     if (Platform.OS === 'web') {
@@ -50,6 +62,14 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
       setIsLoadingPurchases(false);
     }
   };
+
+  const consumeUsage = useCallback(async (): Promise<boolean> => {
+    if (isPro) return true;
+    if (usageCount >= FREE_LIMIT) return false;
+    const next = await incrementUsage();
+    setUsageCount(next);
+    return true;
+  }, [isPro, usageCount]);
 
   const purchasePackage = useCallback(async (pkg: any): Promise<{ success: boolean; error: string | null }> => {
     if (!Purchases) return { success: false, error: 'RevenueCat not available on this platform.' };
@@ -90,11 +110,18 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
     }
   }, [Purchases]);
 
+  const remainingFreeUses = Math.max(0, FREE_LIMIT - usageCount);
+  const canUse = isPro || usageCount < FREE_LIMIT;
+
   return (
     <PurchasesContext.Provider value={{
       isPro,
       isLoadingPurchases,
       currentOffering,
+      usageCount,
+      remainingFreeUses,
+      canUse,
+      consumeUsage,
       purchasePackage,
       restorePurchases,
       refreshPurchaserInfo,

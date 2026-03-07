@@ -17,11 +17,13 @@ function SmartDock({ state, descriptors, navigation }: any) {
     isDark ? '#0B0B0B' : '#FFFFFF'
   ] as const;
 
+  const dockHeight = insets.bottom + 120;
+
   return (
-    <View style={styles.dockWrapper} pointerEvents="box-none">
+    <View style={[styles.dockWrapper, { height: dockHeight }]} pointerEvents="box-none">
       <LinearGradient
         colors={fadeColors}
-        style={[styles.fadeGradient, { height: insets.bottom + 120 }]}
+        style={[StyleSheet.absoluteFill]}
         pointerEvents="none"
       />
 
@@ -117,12 +119,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     justifyContent: 'flex-end',
-  },
-  fadeGradient: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    overflow: 'visible',
   },
   dockContainer: {
     alignItems: 'center',

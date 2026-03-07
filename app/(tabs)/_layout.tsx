@@ -17,8 +17,8 @@ function TabBar({ state, navigation }: any) {
   const activePillBg = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.07)';
 
   return (
-    <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 32) }]} pointerEvents="box-none">
-      <View style={[styles.island, { backgroundColor: islandBg }]} pointerEvents="box-none">
+    <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+      <View style={[styles.island, { backgroundColor: islandBg }]}>
         {state.routes.map((route: any, index: number) => {
           const isFocused = state.index === index;
           const Icon = ICONS[index] ?? FileText;
@@ -78,7 +78,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
-    paddingBottom: 84,
     backgroundColor: 'transparent',
     zIndex: 100,
   },

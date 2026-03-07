@@ -44,7 +44,7 @@ function TabBar({ state, navigation }: any) {
               accessibilityState={isFocused ? { selected: true } : {}}
             >
               <Icon
-                size={22}
+                size={26}
                 color={isFocused ? activeColor : inactiveColor}
                 strokeWidth={isFocused ? 2.2 : 1.7}
               />
@@ -77,16 +77,16 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
-    paddingBottom: 48,
+    paddingBottom: 64,
     backgroundColor: 'transparent',
   },
   island: {
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 32,
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    gap: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
@@ -94,15 +94,15 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   tab: {
-    width: 52,
-    height: 40,
+    width: 62,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 24,
   },
   tabActive: {
-    width: 52,
-    height: 40,
+    width: 62,
+    height: 48,
     borderRadius: 24,
   },
 });

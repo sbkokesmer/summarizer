@@ -7,19 +7,24 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ICONS = [FileText, Globe, Clock, User];
 
+const TAB_BAR_HEIGHT = 68;
+
 function TabBar({ state, navigation }: any) {
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
   const activeColor = isDark ? '#FFFFFF' : '#111111';
   const inactiveColor = isDark ? '#555555' : '#AAAAAA';
-  const islandBg = isDark ? 'rgba(28,28,30,0.92)' : 'rgba(255,255,255,0.96)';
+  const islandBg = isDark ? 'rgba(28,28,30,0.96)' : 'rgba(255,255,255,0.98)';
   const activePillBg = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.07)';
   const bottomPad = Math.max(insets.bottom, 8);
 
   return (
     <View
-      style={[styles.wrapper, { paddingBottom: bottomPad }]}
+      style={[
+        styles.wrapper,
+        { paddingBottom: bottomPad, height: TAB_BAR_HEIGHT + bottomPad },
+      ]}
       pointerEvents="box-none"
     >
       <View style={[styles.island, { backgroundColor: islandBg }]}>
@@ -49,7 +54,6 @@ function TabBar({ state, navigation }: any) {
               ]}
               accessibilityRole="button"
               accessibilityState={isFocused ? { selected: true } : {}}
-              hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
             >
               <Icon
                 size={26}
@@ -68,7 +72,10 @@ export default function TabLayout() {
   return (
     <Tabs
       tabBar={(props) => <TabBar {...props} />}
-      screenOptions={{ headerShown: false }}
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: { display: 'none' },
+      }}
     >
       <Tabs.Screen name="index" />
       <Tabs.Screen name="translate" />
@@ -85,7 +92,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
-    pointerEvents: 'box-none' as any,
+    justifyContent: 'flex-end',
+    backgroundColor: 'transparent',
   },
   island: {
     flexDirection: 'row',
@@ -113,6 +121,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   tabPressed: {
-    opacity: 0.7,
+    opacity: 0.65,
   },
 });

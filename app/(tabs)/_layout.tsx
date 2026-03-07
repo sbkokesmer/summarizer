@@ -13,7 +13,7 @@ function TabBar({ state, navigation }: any) {
 
   const activeColor = isDark ? '#FFFFFF' : '#111111';
   const inactiveColor = isDark ? '#555555' : '#AAAAAA';
-  const islandBg = isDark ? 'rgba(28,28,30,0.96)' : 'rgba(255,255,255,0.96)';
+  const islandBg = isDark ? 'rgba(28,28,30,0.75)' : 'rgba(255,255,255,0.75)';
   const activePillBg = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.07)';
 
   return (
@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
-    paddingBottom: 28,
+    paddingBottom: 48,
     backgroundColor: 'transparent',
   },
   island: {

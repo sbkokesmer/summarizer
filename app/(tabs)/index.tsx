@@ -21,6 +21,7 @@ import { EmptyStateCard } from '@/components/EmptyStateCard';
 import { LanguageSelectionSheet, LANGUAGES } from '@/components/LanguageSelectionSheet';
 import { SummaryStyleSheet, SUMMARY_STYLES } from '@/components/SummaryStyleSheet';
 import { PrivacyBadge } from '@/components/PrivacyBadge';
+import { SwipeTabView } from '@/components/SwipeTabView';
 import { callOpenAI } from '@/services/openai';
 import { saveHistoryItem, InputType } from '@/services/historyStore';
 import { notifySummaryReady } from '@/services/notifications';
@@ -199,6 +200,7 @@ export default function SummarizeScreen() {
   const gradientColors = isDark ? ['#1C1C1E', '#000000'] : ['#F2F2F7', '#FFFFFF'];
 
   return (
+    <SwipeTabView>
     <View style={styles.root}>
       <LinearGradient colors={gradientColors} style={StyleSheet.absoluteFill} pointerEvents="none" />
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -366,6 +368,7 @@ export default function SummarizeScreen() {
         onCustomFocusChange={setCustomFocus}
       />
     </View>
+    </SwipeTabView>
   );
 }
 

@@ -31,6 +31,7 @@ import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '@/context/ThemeContext';
 import { exportToPdf } from '@/services/pdfExport';
 import { FadeInView } from '@/components/FadeInView';
+import { SwipeTabView } from '@/components/SwipeTabView';
 import { loadHistory, deleteHistoryItem, clearHistory, HistoryItem, InputType } from '@/services/historyStore';
 
 const INPUT_ICON: Record<InputType, { icon: typeof FileText; color: string }> = {
@@ -105,6 +106,7 @@ export default function HistoryScreen() {
   const gradientColors = isDark ? ['#1C1C1E', '#000000'] : ['#F2F2F7', '#FFFFFF'];
 
   return (
+    <SwipeTabView>
     <View style={styles.root}>
       <LinearGradient colors={gradientColors} style={StyleSheet.absoluteFill} pointerEvents="none" />
 
@@ -242,6 +244,7 @@ export default function HistoryScreen() {
         )}
       </Modal>
     </View>
+    </SwipeTabView>
   );
 }
 

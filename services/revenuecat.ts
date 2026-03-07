@@ -6,9 +6,10 @@ export const REVENUECAT_API_KEY = Platform.select({
   default: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? '',
 });
 
-export const ENTITLEMENT_ID = 'pro';
+export const ENTITLEMENT_ID = 'Summarizer & Translator AI Pro';
 
 export const PRODUCT_IDS = {
-  annual: 'pro_annual',
-  monthly: 'pro_monthly',
+  annual: 'yearly',
+  monthly: 'monthly',
+  lifetime: 'lifetime',
 };

@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
-    paddingBottom: 12,
+    paddingBottom: 28,
     backgroundColor: 'transparent',
   },
   island: {

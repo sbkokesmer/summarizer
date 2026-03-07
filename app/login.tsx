@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -42,11 +42,18 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
+  const [appleAvailable, setAppleAvailable] = useState(false);
   const [selectedLangId, setSelectedLangId] = useState<string | null>(null);
   const [isLangSheetVisible, setIsLangSheetVisible] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const selectedLang = LANGUAGES.find(l => l.id === selectedLangId);
+
+  useEffect(() => {
+    if (Platform.OS === 'ios') {
+      AppleAuthentication.isAvailableAsync().then(setAppleAvailable).catch(() => setAppleAvailable(false));
+    }
+  }, []);
 
   const changeStep = (newStep: Step) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -88,10 +95,6 @@ export default function LoginScreen() {
     setIsLoading(false);
     if (result.error) {
       setAuthError(result.error);
-      return;
-    }
-    if (result.error === null) {
-      changeStep('onboarding');
     }
   };
 
@@ -135,7 +138,7 @@ export default function LoginScreen() {
               </View>
 
               <View style={styles.actionContainer}>
-                {Platform.OS === 'ios' && (
+                {appleAvailable && (
                   <AppleAuthentication.AppleAuthenticationButton
                     buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
                     buttonStyle={isDark

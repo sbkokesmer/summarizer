@@ -1,11 +1,11 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { FileText, Globe, Clock } from 'lucide-react-native';
+import { FileText, Globe, Clock, User } from 'lucide-react-native';
 import { StyleSheet, View, TouchableOpacity } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const ICONS = [FileText, Globe, Clock];
+const ICONS = [FileText, Globe, Clock, User];
 
 function TabBar({ state, navigation }: any) {
   const { isDark } = useTheme();
@@ -66,6 +66,7 @@ export default function TabLayout() {
       <Tabs.Screen name="index" />
       <Tabs.Screen name="translate" />
       <Tabs.Screen name="history" />
+      <Tabs.Screen name="profile" />
     </Tabs>
   );
 }

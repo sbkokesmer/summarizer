@@ -3,6 +3,8 @@ import { Platform } from 'react-native';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
+
 interface AuthContextType {
   session: Session | null;
   user: User | null;
@@ -11,6 +13,7 @@ interface AuthContextType {
   signUpWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
   signInWithApple: () => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<{ error: string | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -94,6 +97,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
   };
 
+  const deleteAccount = async (): Promise<{ error: string | null }> => {
+    const { data: { session: currentSession } } = await supabase.auth.getSession();
+    if (!currentSession) return { error: 'Not authenticated.' };
+
+    try {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/delete-account`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${currentSession.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const json = await response.json();
+      if (!response.ok || json.error) {
+        return { error: json.error ?? 'Failed to delete account.' };
+      }
+
+      await supabase.auth.signOut();
+      return { error: null };
+    } catch (e: any) {
+      return { error: e.message ?? 'Failed to delete account.' };
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       session,
@@ -103,6 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUpWithEmail,
       signInWithApple,
       signOut,
+      deleteAccount,
     }}>
       {children}
     </AuthContext.Provider>

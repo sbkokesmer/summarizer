@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { FileText, Globe, Clock, User } from 'lucide-react-native';
-import { StyleSheet, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Pressable } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -13,11 +13,15 @@ function TabBar({ state, navigation }: any) {
 
   const activeColor = isDark ? '#FFFFFF' : '#111111';
   const inactiveColor = isDark ? '#555555' : '#AAAAAA';
-  const islandBg = isDark ? 'rgba(28,28,30,0.75)' : 'rgba(255,255,255,0.75)';
+  const islandBg = isDark ? 'rgba(28,28,30,0.92)' : 'rgba(255,255,255,0.96)';
   const activePillBg = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.07)';
+  const bottomPad = Math.max(insets.bottom, 8);
 
   return (
-    <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+    <View
+      style={[styles.wrapper, { paddingBottom: bottomPad }]}
+      pointerEvents="box-none"
+    >
       <View style={[styles.island, { backgroundColor: islandBg }]}>
         {state.routes.map((route: any, index: number) => {
           const isFocused = state.index === index;
@@ -35,20 +39,24 @@ function TabBar({ state, navigation }: any) {
           };
 
           return (
-            <TouchableOpacity
+            <Pressable
               key={route.key}
               onPress={onPress}
-              style={[styles.tab, isFocused && [styles.tabActive, { backgroundColor: activePillBg }]]}
-              activeOpacity={0.7}
+              style={({ pressed }) => [
+                styles.tab,
+                isFocused && [styles.tabActive, { backgroundColor: activePillBg }],
+                pressed && styles.tabPressed,
+              ]}
               accessibilityRole="button"
               accessibilityState={isFocused ? { selected: true } : {}}
+              hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
             >
               <Icon
                 size={26}
                 color={isFocused ? activeColor : inactiveColor}
                 strokeWidth={isFocused ? 2.2 : 1.7}
               />
-            </TouchableOpacity>
+            </Pressable>
           );
         })}
       </View>
@@ -61,7 +69,6 @@ export default function TabLayout() {
     <Tabs
       tabBar={(props) => <TabBar {...props} />}
       screenOptions={{ headerShown: false }}
-      sceneContainerStyle={{ backgroundColor: 'transparent' }}
     >
       <Tabs.Screen name="index" />
       <Tabs.Screen name="translate" />
@@ -78,8 +85,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
-    backgroundColor: 'transparent',
-    zIndex: 100,
+    pointerEvents: 'box-none' as any,
   },
   island: {
     flexDirection: 'row',
@@ -90,7 +96,7 @@ const styles = StyleSheet.create({
     gap: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.18,
     shadowRadius: 24,
     elevation: 12,
   },
@@ -105,5 +111,8 @@ const styles = StyleSheet.create({
     width: 62,
     height: 48,
     borderRadius: 24,
+  },
+  tabPressed: {
+    opacity: 0.7,
   },
 });

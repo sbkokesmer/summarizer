@@ -14,7 +14,6 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Mail, ChevronLeft, Check, Globe, ChevronDown, ShieldCheck } from 'lucide-react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { FadeInView } from '@/components/FadeInView';
@@ -52,10 +51,6 @@ export default function LoginScreen() {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setAuthError(null);
     setStep(newStep);
-  };
-
-  const handleAppleAuth = () => {
-    setAuthError('Apple Sign In requires a native build. Please use email to continue.');
   };
 
   const handleEmailAuth = async () => {
@@ -125,17 +120,6 @@ export default function LoginScreen() {
               </View>
 
               <View style={styles.actionContainer}>
-                <TouchableOpacity
-                  style={[styles.appleButton, { backgroundColor: isDark ? '#FFFFFF' : '#000000' }]}
-                  onPress={handleAppleAuth}
-                  activeOpacity={0.8}
-                >
-                  <FontAwesome5 name="apple" size={20} color={isDark ? '#000000' : '#FFFFFF'} />
-                  <Text style={[styles.appleButtonText, { color: isDark ? '#000000' : '#FFFFFF' }]}>
-                    Continue with Apple
-                  </Text>
-                </TouchableOpacity>
-
                 <TouchableOpacity
                   style={[styles.emailButton, { backgroundColor: colors.card, borderColor: colors.border }]}
                   onPress={() => changeStep('email')}
@@ -361,18 +345,6 @@ const styles = StyleSheet.create({
   },
   actionContainer: {
     gap: 16,
-  },
-  appleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 56,
-    borderRadius: 20,
-    gap: 10,
-  },
-  appleButtonText: {
-    fontSize: 17,
-    fontWeight: '600',
   },
   emailButton: {
     flexDirection: 'row',

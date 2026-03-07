@@ -11,77 +11,83 @@ function SmartDock({ state, descriptors, navigation }: any) {
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
-  // Soft fade gradient from transparent to the theme's background color
   const fadeColors = [
     'transparent',
     isDark ? 'rgba(11,11,11,0.8)' : 'rgba(255,255,255,0.8)',
     isDark ? '#0B0B0B' : '#FFFFFF'
-  ];
+  ] as const;
 
   return (
     <View style={styles.dockWrapper} pointerEvents="box-none">
-      {/* Soft fade gradient from content into dock area */}
       <LinearGradient
         colors={fadeColors}
         style={[styles.fadeGradient, { height: insets.bottom + 120 }]}
         pointerEvents="none"
       />
 
-      {/* Floating Dock */}
-      <View style={[styles.dockContainer, { paddingBottom: Platform.OS === 'ios' ? insets.bottom : 24 }]} pointerEvents="box-none">
-        <BlurView
-          intensity={isDark ? 25 : 35}
-          tint={isDark ? 'dark' : 'light'}
+      <View
+        style={[styles.dockContainer, { paddingBottom: Platform.OS === 'ios' ? insets.bottom : 24 }]}
+        pointerEvents="box-none"
+      >
+        <View
           style={[
-            styles.dock,
+            styles.dockOuter,
             {
               borderColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)',
-              backgroundColor: isDark ? 'rgba(28,28,30,0.4)' : 'rgba(255,255,255,0.4)',
             }
           ]}
         >
-          {state.routes.map((route: any, index: number) => {
-            const { options } = descriptors[route.key];
-            const isFocused = state.index === index;
+          <BlurView
+            intensity={isDark ? 25 : 35}
+            tint={isDark ? 'dark' : 'light'}
+            style={[
+              StyleSheet.absoluteFill,
+              { backgroundColor: isDark ? 'rgba(28,28,30,0.4)' : 'rgba(255,255,255,0.4)' }
+            ]}
+          />
 
-            const onPress = () => {
-              const event = navigation.emit({
-                type: 'tabPress',
-                target: route.key,
-                canPreventDefault: true,
-              });
+          <View style={styles.dockInner} pointerEvents="box-none">
+            {state.routes.map((route: any, index: number) => {
+              const isFocused = state.index === index;
 
-              if (!isFocused && !event.defaultPrevented) {
-                navigation.navigate(route.name, route.params);
-              }
-            };
+              const onPress = () => {
+                const event = navigation.emit({
+                  type: 'tabPress',
+                  target: route.key,
+                  canPreventDefault: true,
+                });
 
-            // Determine Icon based on route name
-            let Icon = FileText;
-            if (route.name === 'translate') Icon = Globe;
-            if (route.name === 'history') Icon = Clock;
+                if (!isFocused && !event.defaultPrevented) {
+                  navigation.navigate(route.name, route.params);
+                }
+              };
 
-            const activeColor = isDark ? '#FFFFFF' : '#000000';
-            const inactiveColor = isDark ? '#666666' : '#999999';
+              let Icon = FileText;
+              if (route.name === 'translate') Icon = Globe;
+              if (route.name === 'history') Icon = Clock;
 
-            return (
-              <TouchableOpacity
-                key={route.key}
-                accessibilityRole="button"
-                accessibilityState={isFocused ? { selected: true } : {}}
-                onPress={onPress}
-                style={styles.dockItem}
-                activeOpacity={0.7}
-              >
-                <Icon
-                  size={24}
-                  color={isFocused ? activeColor : inactiveColor}
-                  strokeWidth={isFocused ? 2.5 : 1.5}
-                />
-              </TouchableOpacity>
-            );
-          })}
-        </BlurView>
+              const activeColor = isDark ? '#FFFFFF' : '#000000';
+              const inactiveColor = isDark ? '#666666' : '#999999';
+
+              return (
+                <TouchableOpacity
+                  key={route.key}
+                  accessibilityRole="button"
+                  accessibilityState={isFocused ? { selected: true } : {}}
+                  onPress={onPress}
+                  style={styles.dockItem}
+                  activeOpacity={0.7}
+                >
+                  <Icon
+                    size={24}
+                    color={isFocused ? activeColor : inactiveColor}
+                    strokeWidth={isFocused ? 2.5 : 1.5}
+                  />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -121,16 +127,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
   },
-  dock: {
+  dockOuter: {
+    borderRadius: 32,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+  },
+  dockInner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
     paddingHorizontal: 32,
-    borderRadius: 32,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: 'hidden',
-    gap: 36, // Adjusted gap for 3 items
+    gap: 36,
   },
   dockItem: {
     padding: 8,

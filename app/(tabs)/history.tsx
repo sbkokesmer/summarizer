@@ -106,7 +106,7 @@ export default function HistoryScreen() {
 
   return (
     <View style={styles.root}>
-      <LinearGradient colors={gradientColors} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={gradientColors} style={StyleSheet.absoluteFill} pointerEvents="none" />
 
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <View style={styles.headerRow}>

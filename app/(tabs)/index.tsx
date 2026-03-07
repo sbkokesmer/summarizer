@@ -200,7 +200,7 @@ export default function SummarizeScreen() {
 
   return (
     <View style={styles.root}>
-      <LinearGradient colors={gradientColors} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={gradientColors} style={StyleSheet.absoluteFill} pointerEvents="none" />
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <Animated.ScrollView
           style={styles.scrollView}

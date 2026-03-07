@@ -8,8 +8,10 @@ import Animated, {
 import { useRouter, usePathname } from 'expo-router';
 
 const TABS = ['/(tabs)/index', '/(tabs)/translate', '/(tabs)/history', '/(tabs)/profile'];
-const SWIPE_THRESHOLD = 80;
-const VELOCITY_THRESHOLD = 0.6;
+const SWIPE_THRESHOLD = 60;
+const VELOCITY_THRESHOLD = 0.5;
+const H_LOCK_RATIO = 2.5;
+const MIN_DX = 18;
 
 interface Props {
   children: React.ReactNode;
@@ -48,12 +50,12 @@ export function SwipeTabView({ children }: Props) {
         if (isLocked.current) return false;
         const dx = Math.abs(g.dx);
         const dy = Math.abs(g.dy);
-        if (dx < 10) return false;
-        if (dy > dx * 0.5) {
+        if (dx < MIN_DX) return false;
+        if (dy > dx / H_LOCK_RATIO) {
           isLocked.current = true;
           return false;
         }
-        return dx > dy * 1.5 && dx > 12;
+        return dx > dy * H_LOCK_RATIO && dx > MIN_DX;
       },
       onMoveShouldSetPanResponderCapture: () => false,
       onPanResponderGrant: (_, g) => {
@@ -67,7 +69,7 @@ export function SwipeTabView({ children }: Props) {
         const dy = Math.abs(g.dy);
         if (isHorizontal.current === null) {
           if (dx < 10 && dy < 10) return;
-          isHorizontal.current = dx > dy * 1.5;
+          isHorizontal.current = dx > dy * H_LOCK_RATIO;
           if (!isHorizontal.current) {
             isLocked.current = true;
             return;

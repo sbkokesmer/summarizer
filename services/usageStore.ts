@@ -1,31 +1,31 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '@/lib/supabase';
 
-const USAGE_KEY = 'free_usage_count';
 export const FREE_LIMIT = 5;
 
-export async function getUsageCount(): Promise<number> {
-  try {
-    const raw = await AsyncStorage.getItem(USAGE_KEY);
-    if (!raw) return 0;
-    return parseInt(raw, 10) || 0;
-  } catch {
-    return 0;
-  }
+export async function getUsageCount(userId: string): Promise<number> {
+  const { data, error } = await supabase
+    .from('user_usage')
+    .select('usage_count')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error || !data) return 0;
+  return data.usage_count;
 }
 
-export async function incrementUsage(): Promise<number> {
-  try {
-    const current = await getUsageCount();
-    const next = current + 1;
-    await AsyncStorage.setItem(USAGE_KEY, String(next));
-    return next;
-  } catch {
-    return 0;
-  }
+export async function incrementUsage(userId: string): Promise<number> {
+  const current = await getUsageCount(userId);
+  const next = current + 1;
+
+  await supabase
+    .from('user_usage')
+    .upsert({ user_id: userId, usage_count: next, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+
+  return next;
 }
 
-export async function resetUsage(): Promise<void> {
-  try {
-    await AsyncStorage.removeItem(USAGE_KEY);
-  } catch {}
+export async function resetUsage(userId: string): Promise<void> {
+  await supabase
+    .from('user_usage')
+    .upsert({ user_id: userId, usage_count: 0, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
 }

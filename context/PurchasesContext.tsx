@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { Platform } from 'react-native';
 import { REVENUECAT_API_KEY, ENTITLEMENT_ID } from '@/services/revenuecat';
 import { getUsageCount, incrementUsage, FREE_LIMIT } from '@/services/usageStore';
+import { useAuth } from '@/context/AuthContext';
 
 interface PurchasesContextType {
   isPro: boolean;
@@ -19,6 +20,7 @@ interface PurchasesContextType {
 const PurchasesContext = createContext<PurchasesContextType | null>(null);
 
 export function PurchasesProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [isPro, setIsPro] = useState(false);
   const [isLoadingPurchases, setIsLoadingPurchases] = useState(true);
   const [currentOffering, setCurrentOffering] = useState<any | null>(null);
@@ -27,11 +29,18 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     initRevenueCat();
-    loadUsage();
   }, []);
 
-  const loadUsage = async () => {
-    const count = await getUsageCount();
+  useEffect(() => {
+    if (user) {
+      loadUsage(user.id);
+    } else {
+      setUsageCount(0);
+    }
+  }, [user]);
+
+  const loadUsage = async (userId: string) => {
+    const count = await getUsageCount(userId);
     setUsageCount(count);
   };
 
@@ -65,11 +74,12 @@ export function PurchasesProvider({ children }: { children: React.ReactNode }) {
 
   const consumeUsage = useCallback(async (): Promise<boolean> => {
     if (isPro) return true;
+    if (!user) return usageCount < FREE_LIMIT;
     if (usageCount >= FREE_LIMIT) return false;
-    const next = await incrementUsage();
+    const next = await incrementUsage(user.id);
     setUsageCount(next);
     return true;
-  }, [isPro, usageCount]);
+  }, [isPro, usageCount, user]);
 
   const purchasePackage = useCallback(async (pkg: any): Promise<{ success: boolean; error: string | null }> => {
     if (!Purchases) return { success: false, error: 'RevenueCat not available on this platform.' };

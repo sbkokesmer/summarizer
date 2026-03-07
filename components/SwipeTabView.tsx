@@ -9,7 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useRouter, usePathname } from 'expo-router';
 
-const TABS = ['/(tabs)/index', '/(tabs)/translate', '/(tabs)/history'];
+const TABS = ['/(tabs)/index', '/(tabs)/translate', '/(tabs)/history', '/(tabs)/profile'];
 const SWIPE_THRESHOLD = 50;
 const VELOCITY_THRESHOLD = 300;
 
@@ -44,8 +44,9 @@ export function SwipeTabView({ children }: Props) {
 
   const swipe = Gesture.Pan()
     .runOnJS(true)
-    .activeOffsetX([-15, 15])
-    .failOffsetY([-20, 20])
+    .activeOffsetX([-20, 20])
+    .failOffsetY([-15, 15])
+    .simultaneousWithExternalGesture()
     .onUpdate((e) => {
       const canGoLeft = idx > 0;
       const canGoRight = idx < TABS.length - 1;

@@ -24,7 +24,13 @@ export interface OpenAIRequestParams {
 }
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
-  const { data: { session } } = await supabase.auth.getSession();
+  let { data: { session } } = await supabase.auth.getSession();
+
+  if (!session) {
+    const { data: refreshed } = await supabase.auth.refreshSession();
+    session = refreshed.session;
+  }
+
   const token = session?.access_token || SUPABASE_ANON_KEY;
   return {
     Authorization: `Bearer ${token}`,

@@ -72,13 +72,15 @@ export default function PaywallScreen() {
 
   const handleSubscribe = async () => {
     setErrorMessage(null);
+
+    if (Platform.OS === 'web') {
+      setErrorMessage('In-app purchases are only available on the iOS or Android app.');
+      return;
+    }
+
     const pkg = selectedPlan === 'annual' ? annualPackage : monthlyPackage;
 
     if (!pkg) {
-      if (Platform.OS === 'web') {
-        setErrorMessage('In-app purchases are not available on web. Please use the iOS or Android app.');
-        return;
-      }
       setErrorMessage('Products are loading, please try again.');
       return;
     }

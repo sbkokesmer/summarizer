@@ -10,7 +10,6 @@ import Animated, {
 import { useRouter, usePathname } from 'expo-router';
 
 const TABS = ['/(tabs)/index', '/(tabs)/translate', '/(tabs)/history'];
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 50;
 const VELOCITY_THRESHOLD = 300;
 

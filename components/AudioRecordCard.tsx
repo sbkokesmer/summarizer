@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Mic, Square, Trash2, Play, Pause, Upload, Music, ShieldCheck } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Audio } from 'expo-av';
 import { useTheme } from '@/context/ThemeContext';
 
